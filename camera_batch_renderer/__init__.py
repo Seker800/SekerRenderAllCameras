@@ -5,7 +5,7 @@ from __future__ import annotations
 bl_info = {
     "name": "Render All Cameras",
     "author": "Seker800",
-    "version": (0, 2, 0),
+    "version": (0, 2, 1),
     "blender": (4, 0, 2),
     "location": "3D Viewport > Sidebar > Batch Render; Properties > Output",
     "description": "Render still images from every camera in the current scene",

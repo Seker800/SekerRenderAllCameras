@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import unittest
 from pathlib import Path
 
@@ -8,6 +9,22 @@ PACKAGE = ROOT / "camera_batch_renderer"
 
 
 class VersionCompatibilityTests(unittest.TestCase):
+    def test_version_is_consistent_across_package_surfaces(self) -> None:
+        entry_point = (PACKAGE / "__init__.py").read_text(encoding="utf-8")
+        manifest = (PACKAGE / "blender_manifest.toml").read_text(encoding="utf-8")
+        runtime = (PACKAGE / "blender" / "runtime.py").read_text(encoding="utf-8")
+        project = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+
+        manifest_version = re.search(r'^version = "([^"]+)"$', manifest, re.MULTILINE)
+        project_version = re.search(r'^version = "([^"]+)"$', project, re.MULTILINE)
+        self.assertIsNotNone(manifest_version)
+        self.assertIsNotNone(project_version)
+        version = manifest_version.group(1)
+        version_tuple = tuple(int(part) for part in version.split("."))
+        self.assertEqual(project_version.group(1), version)
+        self.assertIn(f'"version": {version_tuple}', entry_point)
+        self.assertIn(f'"addon_version": "{version}"', runtime)
+
     def test_package_contract_covers_blender_4_0_2_and_later(self) -> None:
         entry_point = (PACKAGE / "__init__.py").read_text(encoding="utf-8")
         manifest = (PACKAGE / "blender_manifest.toml").read_text(encoding="utf-8")
