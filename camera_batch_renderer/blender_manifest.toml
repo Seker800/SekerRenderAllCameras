@@ -1,6 +1,6 @@
 schema_version = "1.0.0"
 id = "camera_batch_renderer"
-version = "0.1.0"
+version = "0.1.1"
 name = "Render All Cameras"
 tagline = "Render a still image from every camera in the current scene"
 maintainer = "Seker800"

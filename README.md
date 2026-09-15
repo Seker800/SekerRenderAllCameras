@@ -6,13 +6,13 @@ automatic filenames, optional alpha masks, Object ID maps, and JSON manifests.
 一键逐个渲染 Blender 当前场景中的全部摄影机，并自动输出规范命名的静帧、Alpha、Object ID
 和 JSON 清单。
 
-[![Download Blender Extension](https://img.shields.io/badge/Download-Blender_Extension-F5792A?style=for-the-badge&logo=blender&logoColor=white)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.1.0.zip)
+[![Download Blender Extension](https://img.shields.io/badge/Download-Blender_Extension-F5792A?style=for-the-badge&logo=blender&logoColor=white)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.1.1.zip)
 
 [![Latest release](https://img.shields.io/github/v/release/Seker800/SekerRenderAllCameras)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest)
 [![Blender 4.5–5.2](https://img.shields.io/badge/Blender-4.5%20LTS%E2%80%935.2%20LTS-F5792A?logo=blender&logoColor=white)](#compatibility)
 [![License: GPL v3+](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](LICENSE)
 
-> **[Download the latest ready-to-install ZIP](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.1.0.zip)** — do not unzip it.
+> **[Download the latest ready-to-install ZIP](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.1.1.zip)** — do not unzip it.
 
 ## Why use it?
 
@@ -36,7 +36,7 @@ Example filenames:
 
 ## Install
 
-1. **[Download `camera_batch_renderer-0.1.0.zip`](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.1.0.zip)**.
+1. **[Download `camera_batch_renderer-0.1.1.zip`](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.1.1.zip)**.
 2. In Blender, open **Edit → Preferences → Get Extensions**.
 3. Open the top-right menu and choose **Install from Disk**.
 4. Select the downloaded ZIP. Do not extract it first.

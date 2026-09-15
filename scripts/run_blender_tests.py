@@ -143,6 +143,27 @@ def main() -> None:
         )
         assert_true(scene.camera == original_camera, "Cancellation did not restore camera")
 
+        from camera_batch_renderer.presentation import runtime_state  # noqa: PLC0415
+
+        button_cancelled = create_session(
+            scene, batch_start=5, include_alpha=False, include_object_id=False
+        )
+        button_cancelled.start()
+        runtime_state.active_session = button_cancelled
+        runtime_state.render_event = None
+        assert_true(
+            bpy.ops.render.cancel_all_cameras() == {"FINISHED"},
+            "Cancel button failed",
+        )
+        assert_true(
+            button_cancelled.coordinator.snapshot().cancel_requested,
+            "Cancel button did not request cancellation",
+        )
+        assert_true(runtime_state.render_event == "cancelled", "Idle cancel event was not queued")
+        button_cancelled.cancel()
+        button_cancelled.finish()
+        runtime_state.clear()
+
         failed = create_session(scene, batch_start=4, include_alpha=False, include_object_id=False)
         failed.start()
         failed.prepare_current()

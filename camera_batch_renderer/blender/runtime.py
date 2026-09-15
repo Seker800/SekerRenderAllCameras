@@ -89,7 +89,7 @@ class BlenderBatchSession:
         progress = self.coordinator.snapshot()
         payload = {
             "schema_version": 1,
-            "addon_version": "0.1.0",
+            "addon_version": "0.1.1",
             "blender_version": bpy.app.version_string,
             "status": progress.status.value,
             "batch": self.coordinator.plan.batch_label,

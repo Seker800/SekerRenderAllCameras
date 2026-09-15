@@ -151,14 +151,14 @@ class RAC_OT_render_all(bpy.types.Operator):
 class RAC_OT_cancel(bpy.types.Operator):
     bl_idname = "render.cancel_all_cameras"
     bl_label = "Cancel Batch"
+    bl_description = "Stop the batch after the image currently rendering is finished"
 
-    def execute(self, _context: bpy.types.Context) -> set[str]:
+    def execute(self, context: bpy.types.Context) -> set[str]:
         session = runtime_state.active_session
         if session is None:
             return {"CANCELLED"}
         session.coordinator.request_cancel()
-        if bpy.app.is_job_running("RENDER"):
-            bpy.ops.render.view_cancel("INVOKE_DEFAULT")
-        else:
-            session.cancel()
+        context.scene.rac_settings.status_text = "Stopping after current image"
+        if not bpy.app.is_job_running("RENDER"):
+            runtime_state.render_event = "cancelled"
         return {"FINISHED"}

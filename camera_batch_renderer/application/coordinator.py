@@ -48,6 +48,8 @@ class BatchCoordinator:
 
     @property
     def current_action(self) -> RenderAction | None:
+        if self.is_finished:
+            return None
         return self._actions[self._cursor] if self._cursor < len(self._actions) else None
 
     @property

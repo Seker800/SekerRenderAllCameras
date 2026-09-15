@@ -56,6 +56,7 @@ class CoordinatorTests(TestCase):
         coordinator.request_cancel()
         coordinator.complete_current(ResultStatus.SUCCEEDED)
         self.assertEqual(coordinator.snapshot().status, BatchStatus.CANCELLED)
+        self.assertIsNone(coordinator.current_action)
 
     def test_item_failure_continues_then_finishes_failed(self) -> None:
         plan = make_plan()
@@ -78,3 +79,4 @@ class CoordinatorTests(TestCase):
         coordinator.start()
         coordinator.cancel_now()
         self.assertEqual(coordinator.snapshot().status, BatchStatus.CANCELLED)
+        self.assertIsNone(coordinator.current_action)

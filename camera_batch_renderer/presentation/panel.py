@@ -11,11 +11,15 @@ def draw_controls(layout: bpy.types.UILayout, context: bpy.types.Context) -> Non
     row = layout.row(align=True)
     row.prop(settings, "include_alpha")
     row.prop(settings, "include_object_id")
-    if runtime_state.active_session is None:
+    session = runtime_state.active_session
+    if session is None:
         layout.operator("render.render_all_cameras", icon="RENDER_STILL")
     else:
         layout.progress(factor=settings.progress, text=settings.status_text)
-        layout.operator("render.cancel_all_cameras", icon="CANCEL")
+        if session.coordinator.snapshot().cancel_requested:
+            layout.label(text="Waiting for current image…", icon="INFO")
+        else:
+            layout.operator("render.cancel_all_cameras", icon="CANCEL")
     layout.label(text="Output: //RenderOutput/<batch>/", icon="FILE_FOLDER")
 
 
