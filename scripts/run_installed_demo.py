@@ -62,7 +62,10 @@ def main() -> None:
     render_info = next(session.allocation.directory.glob("*_RenderInfo.json"))
     payload = json.loads(render_info.read_text(encoding="utf-8"))
     assert_true(payload["status"] == "completed", "RenderInfo is not completed")
-    assert_true(payload["blender_version"].startswith("5.2"), "Unexpected Blender version")
+    assert_true(
+        payload["blender_version"] == bpy.app.version_string,
+        "RenderInfo Blender version does not match the running host",
+    )
     print(
         "INSTALLED_DEMO_OK",
         json.dumps(

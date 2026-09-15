@@ -1,14 +1,14 @@
 # Blender 全摄影机静帧批量渲染插件开发计划
 
-> 文档状态：实施基线（Revision 2）
+> 文档状态：实施基线（Revision 3）
 >
-> 最低目标版本：Blender 4.5 LTS
+> 最低目标版本：Blender 4.0.2
 >
-> 兼容验证版本：Blender 4.5 LTS 最新补丁版、Blender 5.2 LTS 最新补丁版
+> 兼容验证版本：Blender 4.0.2、4.1.1、4.2.0、4.5 LTS 最新补丁版、5.2 LTS 最新补丁版
 
 ## 1. 项目概述
 
-开发一个 Blender Extension，用于按照当前 `.blend` 文件的渲染设置，一键逐个渲染当前 Scene 中的所有摄影机，并将结果统一保存到 `.blend` 文件旁的批次目录。
+开发一个 Blender 插件，用于按照当前 `.blend` 文件的渲染设置，一键逐个渲染当前 Scene 中的所有摄影机，并将结果统一保存到 `.blend` 文件旁的批次目录。Blender 4.2+ 交付 Extension，4.0.2–4.1 交付同源 Legacy Add-on。
 
 每台摄影机输出：
 
@@ -540,7 +540,7 @@ version = "0.1.0"
 name = "Camera Batch Renderer"
 tagline = "Render a still image from every camera"
 type = "add-on"
-blender_version_min = "4.5.0"
+blender_version_min = "4.2.0"
 license = ["SPDX:GPL-3.0-or-later"]
 ```
 
@@ -551,18 +551,18 @@ blender --command extension validate
 blender --command extension build
 ```
 
-生成的 ZIP 必须分别在干净的 Blender 4.5 LTS 与 5.2 LTS 用户配置中完成“从磁盘安装、启用、运行、禁用、卸载”测试。
+Extension ZIP 必须在 Blender 4.2+ 完成官方验证与安装态测试；同源 Legacy ZIP 必须在 Blender 4.0.2–4.1 完成安装、启用、运行、禁用和卸载测试。
 
 ## 18. 兼容性策略
 
-- 最低支持 Blender 4.5 LTS。
-- 持续验证 Blender 5.2 LTS。
-- 兼容层集中在 `compatibility.py`，业务模块不散布大量版本判断。
+- 最低支持 Blender 4.0.2，不声明人为最高版本。
+- Blender 4.0.2–4.1 使用 Legacy Add-on；Blender 4.2+ 使用 Extension。
+- 兼容层集中在 `domain.compat` 或 Blender Adapter，业务模块不散布大量版本判断。
 - 使用能力检测优先于只比较版本号，例如检查属性、枚举项和引擎能力是否真实存在。
 - 对 Cycles 和 EEVEE 建立明确能力矩阵。
 - 第三方引擎默认只尝试 Beauty；Alpha/ID 必须显式通过测试才启用。
-- 每个受支持 LTS 的最新补丁版运行集成测试。
-- 不承诺支持已结束维护的 Blender 4.2、4.3 等版本。
+- 最低版本、安装体系边界版本和当前 LTS/最新版本运行集成测试。
+- 新发布的 Blender 版本进入支持范围前运行回归；若上游破坏 API，在兼容层修复并记录。
 
 官方参考：
 
@@ -645,7 +645,7 @@ blender --command extension build
 11. 正常、取消和可捕获异常后不留下临时 Blender 数据。
 12. 插件不主动保存 `.blend`，不永久修改原对象材质、颜色或 Pass Index。
 13. 不会无提示覆盖已有文件。
-14. Extension ZIP 能通过 Blender 官方验证命令并在 4.5/5.2 LTS 安装运行。
+14. Extension ZIP 在 4.2+ 通过官方验证并安装运行，Legacy ZIP 在 4.0.2–4.1 安装运行。
 
 ## 21. 开发阶段
 
@@ -657,7 +657,7 @@ blender --command extension build
 - 验证临时 Scene 的生命周期和清理。
 - 验证评估几何复制、链接对象和实例。
 - 验证 Workbench 离屏 ID 渲染的像素精确性。
-- 验证 4.5 与 5.2 LTS API 差异。
+- 验证 4.0.2、4.1、4.2 安装边界与当前 LTS API 差异。
 
 技术验证不通过时先修改设计，不进入完整 UI 开发。
 
@@ -687,8 +687,8 @@ blender --command extension build
 
 ### 阶段 4：兼容与发布
 
-- Blender 4.5/5.2 LTS 全量测试。
-- 安装、禁用、卸载测试。
+- Blender 4.0.2/4.1/4.2 与当前 LTS 全量测试。
+- Extension 与 Legacy 两种包的安装、禁用、卸载测试。
 - README 和使用说明。
 - 官方 Validate/Build。
 - 生成可安装 ZIP。

@@ -1,6 +1,6 @@
 # Blender 4.0.2+ 兼容实施计划
 
-- 状态：ACTIVE
+- 状态：COMPLETED
 - 日期：2026-09-15
 - 目标版本：0.2.0
 - 入口：插件注册、Blender Adapter、构建脚本、README 下载与兼容说明
@@ -91,10 +91,10 @@
 
 - [x] 官方 Extension/Legacy 边界研究
 - [x] Blender 4.0.2 便携环境与依赖探测
-- [ ] M1 最低版本代码兼容
-- [ ] M2 双安装包与安装态验证
-- [ ] M3 文档、版本与完整回归
-- [ ] 发布复盘并转为 COMPLETED
+- [x] M1 最低版本代码兼容
+- [x] M2 双安装包与安装态验证
+- [x] M3 文档、版本与完整回归
+- [x] 发布复盘并转为 COMPLETED
 
 ## 发现与决策
 
@@ -105,4 +105,10 @@
 
 ## 结果复盘
 
-- 待完成后填写测试版本、安装态结果、产物名称、哈希与已知限制。
+- 15 个纯 Python 单元测试、4 个架构门禁和 Ruff 全部通过。
+- Blender 4.0.2、4.1.1、4.2.0、5.2.1 均完成双 Camera 的 Beauty、Alpha、Object ID、透明 Alpha 复用、取消、故障清单与恢复测试；历史 4.5.11 门禁继续有效。
+- Blender 4.0.2 与 4.1.1 的 Legacy ZIP 完成安装、启用、双面板注册、禁用与清理。
+- Blender 4.2.0 的 Extension ZIP 完成官方验证、安装、启用和演示场景六图真实渲染。
+- Extension：`camera_batch_renderer-0.2.0.zip`，SHA-256 `82534526CBFA679949B892521A5DD2A7505F18A842A2F01CBFFDAFDA11B2E3F0`。
+- Legacy：`camera_batch_renderer-0.2.0-legacy.zip`，SHA-256 `C7280C340B5B3AF1025EBC260B2B430DDB8FF3145452F17732667C3BD5DAC1B8`。
+- 已知边界：未来 Blender 版本不设清单上限，但仍需在每次上游新版本发布时回归；第三方渲染器仍只默认保证 Beauty。
