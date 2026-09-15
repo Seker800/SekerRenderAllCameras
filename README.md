@@ -13,4 +13,20 @@ scripts/                # 开发、验证和打包脚本
 Docs/                   # 架构、实现事实、流程、工具、决策与过程产物
 ```
 
-Beauty、Alpha 与 Object ID 三通道批量渲染已经可用；发布可靠性与安装包继续按实施计划推进。输出默认位于 `.blend` 同级的 `RenderOutput/<批次>/`。
+Beauty、Alpha 与 Object ID 三通道批量渲染已经可用。输出默认位于 `.blend` 同级的 `RenderOutput/<批次>/`。
+
+## 安装与使用
+
+1. 在 Blender 4.5 LTS 或 5.2 LTS 中打开 `Edit → Preferences → Get Extensions`。
+2. 通过右上角菜单选择 `Install from Disk`，安装 `dist/camera_batch_renderer-0.1.0.zip`。
+3. 保存 `.blend`，在 `Output Properties → Render All Cameras` 中选择批次前缀与可选通道。
+4. 点击 `Render All Cameras`；可在运行期间点击 `Cancel Batch` 协作式停止。
+
+开发验证：
+
+```powershell
+python -m unittest discover -s tests/unit -v
+python -m unittest discover -s tests/architecture -v
+blender --background --factory-startup --python scripts/run_blender_tests.py
+powershell -ExecutionPolicy Bypass -File scripts/build_extension.ps1
+```

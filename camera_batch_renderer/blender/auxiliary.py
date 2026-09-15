@@ -8,7 +8,7 @@ import bpy
 import numpy as np
 import OpenImageIO as oiio
 
-from camera_batch_renderer.domain.palette import IdColor, allocate_colors
+from ..domain.palette import IdColor, allocate_colors
 
 
 def _srgb_unit_to_linear(normalized: float) -> float:

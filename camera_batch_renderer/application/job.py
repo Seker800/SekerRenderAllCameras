@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 from enum import StrEnum
 
-from camera_batch_renderer.domain import BatchStatus, JobProgress, RenderPlan
+from ..domain import BatchStatus, JobProgress, RenderPlan
 
 
 class JobStep(StrEnum):

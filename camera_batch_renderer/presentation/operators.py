@@ -3,6 +3,7 @@ from __future__ import annotations
 import bpy
 
 from ..blender.runtime import BlenderBatchSession, create_session
+from ..domain import BatchStatus
 from . import runtime_state
 
 
@@ -14,6 +15,34 @@ def _render_complete(*_args: object) -> None:
 def _render_cancel(*_args: object) -> None:
     if runtime_state.active_session is not None:
         runtime_state.render_event = "cancelled"
+
+
+def _load_pre(*_args: object) -> None:
+    session = runtime_state.active_session
+    if session is not None:
+        session.cancel()
+        session.finish()
+    runtime_state.clear()
+
+
+def install_handlers() -> None:
+    for handlers, callback in (
+        (bpy.app.handlers.render_complete, _render_complete),
+        (bpy.app.handlers.render_cancel, _render_cancel),
+        (bpy.app.handlers.load_pre, _load_pre),
+    ):
+        if callback not in handlers:
+            handlers.append(callback)
+
+
+def remove_handlers() -> None:
+    for handlers, callback in (
+        (bpy.app.handlers.render_complete, _render_complete),
+        (bpy.app.handlers.render_cancel, _render_cancel),
+        (bpy.app.handlers.load_pre, _load_pre),
+    ):
+        if callback in handlers:
+            handlers.remove(callback)
 
 
 class RAC_OT_render_all(bpy.types.Operator):
@@ -37,16 +66,20 @@ class RAC_OT_render_all(bpy.types.Operator):
                 include_object_id=settings.include_object_id,
             )
             runtime_state.active_session = session
+            runtime_state.active_operator = self
             session.start()
         except Exception as exc:
             runtime_state.clear()
             self.report({"ERROR"}, str(exc))
             return {"CANCELLED"}
-        self._install_handlers()
         self._timer = context.window_manager.event_timer_add(0.15, window=context.window)
         context.window_manager.modal_handler_add(self)
         settings.status_text = "Rendering"
-        self._start_next_render(session)
+        try:
+            self._start_next_render(session)
+        except Exception as exc:
+            session.fail_current(str(exc))
+            return self._finish(context, cancelled=False)
         return {"RUNNING_MODAL"}
 
     def modal(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
@@ -56,26 +89,21 @@ class RAC_OT_render_all(bpy.types.Operator):
         if session is None:
             return self._finish(context, cancelled=True)
         if runtime_state.render_event == "cancelled":
-            session.coordinator.request_cancel()
-            session.fail("Render cancelled")
+            session.cancel()
             return self._finish(context, cancelled=True)
         if runtime_state.render_event != "complete":
             return {"PASS_THROUGH"}
         runtime_state.render_event = None
-        next_action = session.complete_current()
-        progress = session.coordinator.snapshot()
-        context.scene.rac_settings.progress = len(progress.results) / max(
-            1, progress.camera_count * len(session.coordinator.plan.channels)
-        )
-        if next_action is None:
-            return self._finish(context, cancelled=False)
+        session.complete_current()
+        self._update_progress(context, session)
         try:
             if not self._start_next_render(session):
                 return self._finish(context, cancelled=False)
         except Exception as exc:
-            session.fail(str(exc))
-            self.report({"ERROR"}, str(exc))
-            return self._finish(context, cancelled=True)
+            session.fail_current(str(exc))
+            self.report({"WARNING"}, f"Render item failed: {exc}")
+            if not self._start_next_render(session):
+                return self._finish(context, cancelled=False)
         return {"RUNNING_MODAL"}
 
     @staticmethod
@@ -87,38 +115,37 @@ class RAC_OT_render_all(bpy.types.Operator):
             session.complete_current()
         return False
 
+    @staticmethod
+    def _update_progress(context: bpy.types.Context, session: BlenderBatchSession) -> None:
+        progress = session.coordinator.snapshot()
+        context.scene.rac_settings.progress = len(progress.results) / max(
+            1, progress.camera_count * len(session.coordinator.plan.channels)
+        )
+
     def cancel(self, context: bpy.types.Context) -> None:
         session = runtime_state.active_session
         if session is not None:
-            session.coordinator.request_cancel()
+            session.cancel()
         self._finish(context, cancelled=True)
 
     def _finish(self, context: bpy.types.Context, *, cancelled: bool) -> set[str]:
         session = runtime_state.active_session
         if session is not None:
             if cancelled and not session.coordinator.is_finished:
-                session.coordinator.request_cancel()
+                session.cancel()
             session.finish()
             status = session.coordinator.snapshot().status
             context.scene.rac_settings.status_text = status.value.replace("_", " ").title()
-        self._remove_handlers(context)
+            if status is BatchStatus.COMPLETED:
+                context.scene.rac_settings.batch_start = session.allocation.number + 1
+        self._remove_timer(context)
         runtime_state.clear()
         return {"CANCELLED"} if cancelled else {"FINISHED"}
 
-    def _install_handlers(self) -> None:
-        if _render_complete not in bpy.app.handlers.render_complete:
-            bpy.app.handlers.render_complete.append(_render_complete)
-        if _render_cancel not in bpy.app.handlers.render_cancel:
-            bpy.app.handlers.render_cancel.append(_render_cancel)
-
-    def _remove_handlers(self, context: bpy.types.Context) -> None:
+    def _remove_timer(self, context: bpy.types.Context) -> None:
         if self._timer is not None:
             context.window_manager.event_timer_remove(self._timer)
             self._timer = None
-        if _render_complete in bpy.app.handlers.render_complete:
-            bpy.app.handlers.render_complete.remove(_render_complete)
-        if _render_cancel in bpy.app.handlers.render_cancel:
-            bpy.app.handlers.render_cancel.remove(_render_cancel)
 
 
 class RAC_OT_cancel(bpy.types.Operator):
@@ -132,4 +159,6 @@ class RAC_OT_cancel(bpy.types.Operator):
         session.coordinator.request_cancel()
         if bpy.app.is_job_running("RENDER"):
             bpy.ops.render.view_cancel("INVOKE_DEFAULT")
+        else:
+            session.cancel()
         return {"FINISHED"}

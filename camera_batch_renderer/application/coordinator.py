@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from camera_batch_renderer.domain import (
+from ..domain import (
     BatchStatus,
     Channel,
     ChannelResult,
@@ -36,6 +36,7 @@ class BatchCoordinator:
         self._status = BatchStatus.IDLE
         self._cancel_requested = False
         self._error: str | None = None
+        self._had_failures = False
 
     def start(self) -> RenderAction | None:
         if self._status is not BatchStatus.IDLE:
@@ -83,17 +84,21 @@ class BatchCoordinator:
         )
         self._cursor += 1
         if status is ResultStatus.FAILED:
-            self._status = BatchStatus.FAILED
-            self._error = error or "render failed"
-        elif self._cancel_requested:
+            self._had_failures = True
+            self._error = error or "one or more renders failed"
+        if self._cancel_requested:
             self._status = BatchStatus.CANCELLED
         elif self._cursor >= len(self._actions):
-            self._status = BatchStatus.COMPLETED
+            self._status = BatchStatus.FAILED if self._had_failures else BatchStatus.COMPLETED
         return self.current_action if not self.is_finished else None
 
     def fail(self, error: str) -> None:
         self._error = error
         self._status = BatchStatus.FAILED
+
+    def cancel_now(self) -> None:
+        self._cancel_requested = True
+        self._status = BatchStatus.CANCELLED
 
     def snapshot(self) -> JobProgress:
         action = self.current_action

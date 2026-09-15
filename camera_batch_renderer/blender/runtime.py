@@ -2,23 +2,23 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
 import bpy
 
-from camera_batch_renderer.application import BatchCoordinator, RenderAction
-from camera_batch_renderer.domain import BatchStatus, Channel, ResultStatus
-from camera_batch_renderer.domain.naming import fit_path, output_filename
-from camera_batch_renderer.infrastructure.manifest import AtomicJsonWriter
-from camera_batch_renderer.infrastructure.storage import (
+from ..application import BatchCoordinator, RenderAction
+from ..domain import BatchStatus, Channel, ResultStatus
+from ..domain.naming import fit_path, output_filename
+from ..infrastructure.manifest import AtomicJsonWriter
+from ..infrastructure.storage import (
     BatchAllocation,
     allocate_batch,
     mark_complete,
     mark_incomplete,
 )
-
 from .render_adapter import BlenderRenderAdapter
-from .scene_reader import build_render_plan
+from .scene_reader import build_render_plan, validate_scene
 from .state_transaction import BlenderStateTransaction
 
 
@@ -31,8 +31,10 @@ class BlenderBatchSession:
     transaction: BlenderStateTransaction
     manifest: AtomicJsonWriter
     action_started_at: float = 0.0
+    started_at: str = ""
 
     def start(self) -> RenderAction | None:
+        self.started_at = datetime.now(UTC).isoformat()
         action = self.coordinator.start()
         self.write_manifest()
         return action
@@ -60,11 +62,18 @@ class BlenderBatchSession:
 
     def fail(self, error: str) -> None:
         self.adapter.cleanup_auxiliary()
-        action = self.coordinator.current_action
-        if action is not None:
-            self.coordinator.complete_current(ResultStatus.FAILED, error=error)
-        else:
-            self.coordinator.fail(error)
+        self.coordinator.fail(error)
+        self.write_manifest()
+
+    def fail_current(self, error: str) -> RenderAction | None:
+        self.adapter.cleanup_auxiliary()
+        next_action = self.coordinator.complete_current(ResultStatus.FAILED, error=error)
+        self.write_manifest()
+        return next_action
+
+    def cancel(self) -> None:
+        self.adapter.cleanup_auxiliary()
+        self.coordinator.cancel_now()
         self.write_manifest()
 
     def finish(self) -> None:
@@ -80,6 +89,8 @@ class BlenderBatchSession:
         progress = self.coordinator.snapshot()
         payload = {
             "schema_version": 1,
+            "addon_version": "0.1.0",
+            "blender_version": bpy.app.version_string,
             "status": progress.status.value,
             "batch": self.coordinator.plan.batch_label,
             "blend_file": str(self.coordinator.plan.blend_path),
@@ -88,6 +99,25 @@ class BlenderBatchSession:
             "camera_count": progress.camera_count,
             "cancel_requested": progress.cancel_requested,
             "error": progress.error,
+            "started_at": self.started_at,
+            "updated_at": datetime.now(UTC).isoformat(),
+            "settings": {
+                "engine": self.coordinator.plan.settings.engine,
+                "width": self.coordinator.plan.settings.width,
+                "height": self.coordinator.plan.settings.height,
+                "format": self.coordinator.plan.settings.file_format,
+                "samples": self.coordinator.plan.settings.samples,
+                "film_transparent": self.coordinator.plan.settings.film_transparent,
+            },
+            "channels": [channel.value for channel in self.coordinator.plan.channels],
+            "cameras": [
+                {"key": camera.key, "name": camera.display_name, "output_name": camera.output_name}
+                for camera in self.coordinator.plan.cameras
+            ],
+            "known_limitations": [
+                "Volume objects are excluded from Object ID",
+                "Third-party render engines are only guaranteed for Beauty after validation",
+            ],
             "results": [
                 {
                     "camera": result.camera_name,
@@ -129,8 +159,7 @@ def create_session(
     include_alpha: bool,
     include_object_id: bool,
 ) -> BlenderBatchSession:
-    if not bpy.data.filepath:
-        raise ValueError("Save the .blend file before rendering")
+    validate_scene(scene, include_alpha=include_alpha, include_object_id=include_object_id)
     root = Path(bpy.data.filepath).parent / "RenderOutput"
     allocation = allocate_batch(root, batch_start)
     try:
@@ -163,7 +192,9 @@ def create_session(
             coordinator=BatchCoordinator(plan, outputs),
             adapter=BlenderRenderAdapter(scene),
             transaction=transaction,
-            manifest=AtomicJsonWriter(allocation.directory / "manifest.json"),
+            manifest=AtomicJsonWriter(
+                allocation.directory / f"{plan.batch_label}_{plan.blend_name}_RenderInfo.json"
+            ),
         )
     except Exception:
         mark_incomplete(allocation)

@@ -56,3 +56,25 @@ class CoordinatorTests(TestCase):
         coordinator.request_cancel()
         coordinator.complete_current(ResultStatus.SUCCEEDED)
         self.assertEqual(coordinator.snapshot().status, BatchStatus.CANCELLED)
+
+    def test_item_failure_continues_then_finishes_failed(self) -> None:
+        plan = make_plan()
+        outputs = {
+            (camera.key, Channel.BEAUTY): Path(f"{camera.key}.png") for camera in plan.cameras
+        }
+        coordinator = BatchCoordinator(plan, outputs)
+        coordinator.start()
+        coordinator.complete_current(ResultStatus.FAILED, error="camera failed")
+        self.assertEqual(coordinator.current_action.camera_key, "b")
+        coordinator.complete_current(ResultStatus.SUCCEEDED)
+        self.assertEqual(coordinator.snapshot().status, BatchStatus.FAILED)
+
+    def test_cancel_now_is_terminal(self) -> None:
+        plan = make_plan()
+        outputs = {
+            (camera.key, Channel.BEAUTY): Path(f"{camera.key}.png") for camera in plan.cameras
+        }
+        coordinator = BatchCoordinator(plan, outputs)
+        coordinator.start()
+        coordinator.cancel_now()
+        self.assertEqual(coordinator.snapshot().status, BatchStatus.CANCELLED)

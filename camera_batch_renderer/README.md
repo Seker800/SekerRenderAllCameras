@@ -1,11 +1,19 @@
-# camera_batch_renderer
+# Render All Cameras
 
-可安装 Blender 插件包。实现时按以下目录分层：
+Render still images from every camera in the current Blender Scene. The Extension uses the saved
+`.blend` name, camera name, channel and important render parameters in each filename.
 
-- `domain/`：无 `bpy` 的纯规则和值对象。
-- `application/`：任务用例、状态机与协调。
-- `blender/`：Blender API、渲染和状态事务适配。
-- `infrastructure/`：文件系统、JSON、日志和时钟。
-- `presentation/`：Properties、Panel、Operators 与注册。
+## Use
 
-根 `__init__.py` 只负责插件元数据和对称注册，不承载业务逻辑。
+1. Save the `.blend` file.
+2. Open **Output Properties → Render All Cameras**.
+3. Choose a batch prefix and optionally enable Alpha or Object ID.
+4. Click **Render All Cameras**.
+
+Outputs are written to `RenderOutput/<batch>/` next to the `.blend`. Beauty preserves the current
+render settings. Alpha is a lossless grayscale PNG. Object ID is an un-antialiased RGB PNG whose
+exact colors are documented in the accompanying `ObjectID.json` file.
+
+The Extension never saves the `.blend`. Temporary auxiliary scenes are removed and the active
+camera, frame, Film Transparent setting, and render filepath are restored after completion,
+cancellation, or a handled failure.

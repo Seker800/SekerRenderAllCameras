@@ -2,13 +2,13 @@
 
 ## 状态
 
-- 状态：ACTIVE
+- 状态：COMPLETED
 - 日期：2026-09-15
 - 产品入口：根 `PLAN.md`
 - 最低支持：Blender 4.5 LTS
 - 当前实机验证：Blender 5.2.1 LTS
 - 远端：`Seker800/SekerRenderAllCameras`（private）
-- 阻塞：当前机器未安装 Blender 4.5 LTS，因此 4.5 兼容性只能先由能力检测、API 边界和静态检查覆盖；发布候选阶段再补 4.5 实机。
+- 兼容验证：Blender 4.5.11 LTS 与 5.2.1 LTS 均已完成实机。
 
 ## 用户可观察结果
 
@@ -124,8 +124,16 @@
 - [x] M1 纯核心与持久化：10 个单元测试、1 个架构测试和 Ruff 检查通过。
 - [x] M2 Beauty 与 Extension UI：Blender 5.2.1 后台双摄影机渲染与 MCP 注册检查通过。
 - [x] M3 Alpha 与 Object ID：双路径 Alpha、隔离 evaluated Object ID、逐像素颜色与 MCP 三通道检查通过。
-- [ ] M4 可靠性、文档与发布包。
+- [x] M4 可靠性、文档与发布包：取消/失败恢复、官方构建和双 LTS 安装闭环通过。
 
 ## 结果复盘
 
-完成后填写最终 commit、测试、包哈希、未验证项和已知限制，并将文件改名为 `COMPLETED-首版完整实现.md`。
+- M1：`6e170f0`
+- M2：`13a36bc`
+- M3：`2b25931`
+- M4：以本文件所在提交为准。
+- 测试：14 个纯 Python 单元测试、1 个架构测试、Blender 4.5.11/5.2.1 后台集成测试、MCP Modal GUI 测试。
+- 包：`camera_batch_renderer-0.1.0.zip`
+- SHA-256：`A57D135313E0124C9A7A75CD2D66C29806BE1B3DEC97A2F98953F885E5C9F9D5`
+- 已知限制：第三方引擎只默认保证 Beauty；Volume 不进入 Object ID；第一版不支持 Multiview、动画和多 Scene。
+- 未验证项：无计划内发布门禁遗留。

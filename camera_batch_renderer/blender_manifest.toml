@@ -11,3 +11,10 @@ license = ["SPDX:GPL-3.0-or-later"]
 
 [permissions]
 files = "Write rendered images next to the saved blend file"
+
+[build]
+paths_exclude_pattern = [
+    "__pycache__/",
+    "*.py[cod]",
+    ".git/",
+]

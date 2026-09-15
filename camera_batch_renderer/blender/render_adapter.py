@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import bpy
 
-from camera_batch_renderer.application import RenderAction
-from camera_batch_renderer.domain import Channel
-
+from ..application import RenderAction
+from ..domain import Channel
 from .auxiliary import (
     AlphaScene,
     ObjectIdScene,

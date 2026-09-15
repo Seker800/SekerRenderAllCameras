@@ -4,10 +4,11 @@ from pathlib import Path
 
 import bpy
 
-from camera_batch_renderer.domain import Channel, ConflictPolicy, RenderPlan, RenderSettings
-from camera_batch_renderer.domain.naming import camera_specs, format_batch
+from ..domain import Channel, ConflictPolicy, RenderPlan, RenderSettings
+from ..domain.naming import camera_specs, format_batch
 
 SUPPORTED_FORMATS = {"PNG", "JPEG", "TIFF", "OPEN_EXR", "OPEN_EXR_MULTILAYER"}
+AUXILIARY_ENGINES = {"BLENDER_EEVEE_NEXT", "CYCLES", "BLENDER_WORKBENCH"}
 
 
 def camera_key(camera: bpy.types.Object) -> str:
@@ -21,6 +22,19 @@ def _samples(scene: bpy.types.Scene) -> int | None:
     return None
 
 
+def validate_scene(scene: bpy.types.Scene, *, include_alpha: bool, include_object_id: bool) -> None:
+    if not bpy.data.filepath:
+        raise ValueError("Save the .blend file before rendering")
+    if scene.render.image_settings.file_format not in SUPPORTED_FORMATS:
+        raise ValueError(f"Unsupported output format: {scene.render.image_settings.file_format}")
+    if scene.render.use_multiview:
+        raise ValueError("Multi-view rendering is not supported")
+    if not any(obj.type == "CAMERA" and obj.data is not None for obj in scene.objects):
+        raise ValueError("The current scene has no cameras")
+    if (include_alpha or include_object_id) and scene.render.engine not in AUXILIARY_ENGINES:
+        raise ValueError("Alpha and Object ID are not validated for the current render engine")
+
+
 def build_render_plan(
     scene: bpy.types.Scene,
     *,
@@ -29,17 +43,10 @@ def build_render_plan(
     include_object_id: bool,
     output_directory: Path,
 ) -> RenderPlan:
-    if not bpy.data.filepath:
-        raise ValueError("Save the .blend file before rendering")
-    if scene.render.image_settings.file_format not in SUPPORTED_FORMATS:
-        raise ValueError(f"Unsupported output format: {scene.render.image_settings.file_format}")
-    if scene.render.use_multiview:
-        raise ValueError("Multi-view rendering is not supported")
+    validate_scene(scene, include_alpha=include_alpha, include_object_id=include_object_id)
     cameras = camera_specs(
         (camera_key(obj), obj.name) for obj in scene.objects if obj.type == "CAMERA"
     )
-    if not cameras:
-        raise ValueError("The current scene has no cameras")
     scale = scene.render.resolution_percentage / 100.0
     channels = [Channel.BEAUTY]
     if include_alpha:

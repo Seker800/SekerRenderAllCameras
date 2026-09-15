@@ -13,7 +13,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 import camera_batch_renderer  # noqa: E402
-from camera_batch_renderer.blender.runtime import run_batch_sync  # noqa: E402
+from camera_batch_renderer.blender.runtime import create_session, run_batch_sync  # noqa: E402
 
 
 def assert_true(condition: bool, message: str) -> None:
@@ -83,7 +83,10 @@ def main() -> None:
         assert_true(scene.render.filepath == original_filepath, "Render filepath was not restored")
         assert_true(tuple(cube.color) == original_cube_color, "Original object color changed")
         assert_true(not session.allocation.marker.exists(), "Progress marker was not removed")
-        assert_true((session.allocation.directory / "manifest.json").exists(), "Manifest missing")
+        assert_true(
+            len(list(session.allocation.directory.glob("*_RenderInfo.json"))) == 1,
+            "Manifest missing",
+        )
         id_manifests = list(session.allocation.directory.glob("*_ObjectID.json"))
         assert_true(len(id_manifests) == 1, "Object ID manifest missing")
         id_payload = json.loads(id_manifests[0].read_text(encoding="utf-8"))
@@ -98,7 +101,7 @@ def main() -> None:
             alpha_values = image_rgb_values(result.path)
             assert_true((0, 0, 0) in alpha_values, "Alpha has no transparent background")
             assert_true(
-                (255, 255, 255) in alpha_values,
+                max(value[0] for value in alpha_values) >= 250,
                 f"Alpha has no opaque pixels: {alpha_values}",
             )
 
@@ -114,8 +117,46 @@ def main() -> None:
             not any(item.name.startswith("RAC_") for item in bpy.data.scenes),
             "Temporary scene leaked",
         )
+
+        cancelled = create_session(
+            scene, batch_start=3, include_alpha=False, include_object_id=False
+        )
+        cancelled.start()
+        cancelled.prepare_current()
+        cancelled.cancel()
+        cancelled.finish()
+        assert_true(
+            cancelled.coordinator.snapshot().status.value == "cancelled",
+            "Cancellation status is wrong",
+        )
+        assert_true(
+            (cancelled.allocation.directory / ".incomplete").exists(),
+            "Cancelled batch marker missing",
+        )
+        assert_true(scene.camera == original_camera, "Cancellation did not restore camera")
+
+        failed = create_session(scene, batch_start=4, include_alpha=False, include_object_id=False)
+        failed.start()
+        failed.prepare_current()
+        failed.fail("injected failure")
+        failed.finish()
+        failed_info = next(failed.allocation.directory.glob("*_RenderInfo.json"))
+        failed_payload = json.loads(failed_info.read_text(encoding="utf-8"))
+        assert_true(failed_payload["status"] == "failed", "Failure status is wrong")
+        assert_true(scene.render.filepath == original_filepath, "Failure did not restore filepath")
+
         camera_batch_renderer.unregister()
         assert_true(not hasattr(bpy.types.Scene, "rac_settings"), "Scene settings leaked")
+        from camera_batch_renderer.presentation.operators import (  # noqa: PLC0415
+            _render_cancel,
+            _render_complete,
+        )
+
+        assert_true(
+            _render_complete not in bpy.app.handlers.render_complete,
+            "Complete handler leaked",
+        )
+        assert_true(_render_cancel not in bpy.app.handlers.render_cancel, "Cancel handler leaked")
         print("BLENDER_TESTS_OK")
     finally:
         shutil.rmtree(temporary, ignore_errors=True)

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from camera_batch_renderer.domain.naming import format_batch
+from ..domain.naming import format_batch
 
 
 @dataclass(frozen=True, slots=True)
