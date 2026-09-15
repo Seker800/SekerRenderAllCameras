@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import bpy
 
-from ..blender.runtime import create_session
+from ..blender.runtime import BlenderBatchSession, create_session
 from . import runtime_state
 
 
@@ -38,7 +38,6 @@ class RAC_OT_render_all(bpy.types.Operator):
             )
             runtime_state.active_session = session
             session.start()
-            session.prepare_current()
         except Exception as exc:
             runtime_state.clear()
             self.report({"ERROR"}, str(exc))
@@ -47,7 +46,7 @@ class RAC_OT_render_all(bpy.types.Operator):
         self._timer = context.window_manager.event_timer_add(0.15, window=context.window)
         context.window_manager.modal_handler_add(self)
         settings.status_text = "Rendering"
-        session.adapter.render_async()
+        self._start_next_render(session)
         return {"RUNNING_MODAL"}
 
     def modal(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
@@ -71,13 +70,22 @@ class RAC_OT_render_all(bpy.types.Operator):
         if next_action is None:
             return self._finish(context, cancelled=False)
         try:
-            session.prepare_current()
-            session.adapter.render_async()
+            if not self._start_next_render(session):
+                return self._finish(context, cancelled=False)
         except Exception as exc:
             session.fail(str(exc))
             self.report({"ERROR"}, str(exc))
             return self._finish(context, cancelled=True)
         return {"RUNNING_MODAL"}
+
+    @staticmethod
+    def _start_next_render(session: BlenderBatchSession) -> bool:
+        while session.coordinator.current_action is not None:
+            if session.prepare_current():
+                session.adapter.render_async()
+                return True
+            session.complete_current()
+        return False
 
     def cancel(self, context: bpy.types.Context) -> None:
         session = runtime_state.active_session

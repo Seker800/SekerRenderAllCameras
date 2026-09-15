@@ -13,4 +13,4 @@ scripts/                # 开发、验证和打包脚本
 Docs/                   # 架构、实现事实、流程、工具、决策与过程产物
 ```
 
-Beauty 批量渲染闭环已经可用；Alpha、Object ID 与发布包继续按实施计划推进。输出默认位于 `.blend` 同级的 `RenderOutput/<批次>/`。
+Beauty、Alpha 与 Object ID 三通道批量渲染已经可用；发布可靠性与安装包继续按实施计划推进。输出默认位于 `.blend` 同级的 `RenderOutput/<批次>/`。

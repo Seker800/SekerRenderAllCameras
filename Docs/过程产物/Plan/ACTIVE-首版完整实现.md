@@ -123,7 +123,7 @@
 - [x] 建立私有远端并推送初始提交。
 - [x] M1 纯核心与持久化：10 个单元测试、1 个架构测试和 Ruff 检查通过。
 - [x] M2 Beauty 与 Extension UI：Blender 5.2.1 后台双摄影机渲染与 MCP 注册检查通过。
-- [ ] M3 Alpha 与 Object ID。
+- [x] M3 Alpha 与 Object ID：双路径 Alpha、隔离 evaluated Object ID、逐像素颜色与 MCP 三通道检查通过。
 - [ ] M4 可靠性、文档与发布包。
 
 ## 结果复盘

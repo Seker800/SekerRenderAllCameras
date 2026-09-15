@@ -17,7 +17,7 @@ from camera_batch_renderer.infrastructure.storage import (
     mark_incomplete,
 )
 
-from .render_adapter import BlenderBeautyAdapter
+from .render_adapter import BlenderRenderAdapter
 from .scene_reader import build_render_plan
 from .state_transaction import BlenderStateTransaction
 
@@ -27,7 +27,7 @@ class BlenderBatchSession:
     scene: bpy.types.Scene
     allocation: BatchAllocation
     coordinator: BatchCoordinator
-    adapter: BlenderBeautyAdapter
+    adapter: BlenderRenderAdapter
     transaction: BlenderStateTransaction
     manifest: AtomicJsonWriter
     action_started_at: float = 0.0
@@ -37,25 +37,29 @@ class BlenderBatchSession:
         self.write_manifest()
         return action
 
-    def prepare_current(self) -> RenderAction:
+    def prepare_current(self) -> bool:
         action = self.coordinator.current_action
         if action is None:
             raise RuntimeError("batch has no pending action")
-        if action.channel is not Channel.BEAUTY:
-            raise NotImplementedError(f"Channel not available yet: {action.channel.value}")
-        self.adapter.prepare(action.camera_key, action.output_path)
         self.action_started_at = time.monotonic()
-        return action
+        return self.adapter.prepare(action)
 
     def complete_current(self) -> RenderAction | None:
         elapsed = max(0.0, time.monotonic() - self.action_started_at)
+        completed_action = self.coordinator.current_action
+        completed_channel = completed_action.channel
+        self.adapter.finalize_output(completed_action)
         next_action = self.coordinator.complete_current(
             ResultStatus.SUCCEEDED, elapsed_seconds=elapsed
         )
+        self.adapter.cleanup_auxiliary()
+        if completed_channel is Channel.OBJECT_ID:
+            self.write_object_id_manifest()
         self.write_manifest()
         return next_action
 
     def fail(self, error: str) -> None:
+        self.adapter.cleanup_auxiliary()
         action = self.coordinator.current_action
         if action is not None:
             self.coordinator.complete_current(ResultStatus.FAILED, error=error)
@@ -64,6 +68,7 @@ class BlenderBatchSession:
         self.write_manifest()
 
     def finish(self) -> None:
+        self.adapter.cleanup_auxiliary()
         self.transaction.restore()
         if self.coordinator.snapshot().status is BatchStatus.COMPLETED:
             mark_complete(self.allocation)
@@ -97,6 +102,24 @@ class BlenderBatchSession:
             ],
         }
         self.manifest.write(payload)
+
+    def write_object_id_manifest(self) -> None:
+        if not self.adapter.id_colors:
+            return
+        path = self.allocation.directory / (
+            f"{self.coordinator.plan.batch_label}_{self.coordinator.plan.blend_name}_ObjectID.json"
+        )
+        AtomicJsonWriter(path).write(
+            {
+                "schema_version": 1,
+                "background": "#000000",
+                "objects": [
+                    {"key": color.key, "rgb": list(color.rgb), "hex": color.hex}
+                    for color in self.adapter.id_colors
+                ],
+                "skipped": self.adapter.id_skipped,
+            }
+        )
 
 
 def create_session(
@@ -138,7 +161,7 @@ def create_session(
             scene=scene,
             allocation=allocation,
             coordinator=BatchCoordinator(plan, outputs),
-            adapter=BlenderBeautyAdapter(scene),
+            adapter=BlenderRenderAdapter(scene),
             transaction=transaction,
             manifest=AtomicJsonWriter(allocation.directory / "manifest.json"),
         )
@@ -148,14 +171,27 @@ def create_session(
 
 
 def run_beauty_batch_sync(scene: bpy.types.Scene, batch_start: int = 1) -> BlenderBatchSession:
+    return run_batch_sync(scene, batch_start=batch_start)
+
+
+def run_batch_sync(
+    scene: bpy.types.Scene,
+    *,
+    batch_start: int = 1,
+    include_alpha: bool = False,
+    include_object_id: bool = False,
+) -> BlenderBatchSession:
     session = create_session(
-        scene, batch_start=batch_start, include_alpha=False, include_object_id=False
+        scene,
+        batch_start=batch_start,
+        include_alpha=include_alpha,
+        include_object_id=include_object_id,
     )
     try:
         session.start()
         while session.coordinator.current_action is not None:
-            session.prepare_current()
-            session.adapter.render_sync()
+            if session.prepare_current():
+                session.adapter.render_sync()
             session.complete_current()
     except Exception as exc:
         session.fail(str(exc))
