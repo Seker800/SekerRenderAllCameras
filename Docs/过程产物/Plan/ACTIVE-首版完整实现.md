@@ -122,7 +122,7 @@
 - [x] 环境发现：Git、Git LFS、GitHub CLI、uvx、Blender 5.2.1 LTS 可用。
 - [x] 建立私有远端并推送初始提交。
 - [x] M1 纯核心与持久化：10 个单元测试、1 个架构测试和 Ruff 检查通过。
-- [ ] M2 Beauty 与 Extension UI。
+- [x] M2 Beauty 与 Extension UI：Blender 5.2.1 后台双摄影机渲染与 MCP 注册检查通过。
 - [ ] M3 Alpha 与 Object ID。
 - [ ] M4 可靠性、文档与发布包。
 

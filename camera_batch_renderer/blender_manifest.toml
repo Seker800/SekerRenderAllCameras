@@ -1,0 +1,13 @@
+schema_version = "1.0.0"
+id = "camera_batch_renderer"
+version = "0.1.0"
+name = "Render All Cameras"
+tagline = "Render a still image from every camera in the current scene"
+maintainer = "Seker800"
+type = "add-on"
+tags = ["Render"]
+blender_version_min = "4.5.0"
+license = ["SPDX:GPL-3.0-or-later"]
+
+[permissions]
+files = "Write rendered images next to the saved blend file"
