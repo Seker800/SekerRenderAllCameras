@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import StrEnum
 from pathlib import Path
+
+from .compat import StrEnum
 
 
 class Channel(StrEnum):

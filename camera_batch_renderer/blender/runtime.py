@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import bpy
@@ -34,7 +34,7 @@ class BlenderBatchSession:
     started_at: str = ""
 
     def start(self) -> RenderAction | None:
-        self.started_at = datetime.now(UTC).isoformat()
+        self.started_at = datetime.now(timezone.utc).isoformat()
         action = self.coordinator.start()
         self.write_manifest()
         return action
@@ -100,7 +100,7 @@ class BlenderBatchSession:
             "cancel_requested": progress.cancel_requested,
             "error": progress.error,
             "started_at": self.started_at,
-            "updated_at": datetime.now(UTC).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
             "settings": {
                 "engine": self.coordinator.plan.settings.engine,
                 "width": self.coordinator.plan.settings.width,

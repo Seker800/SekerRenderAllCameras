@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from enum import StrEnum
 
 from ..domain import BatchStatus, JobProgress, RenderPlan
+from ..domain.compat import StrEnum
 
 
 class JobStep(StrEnum):
