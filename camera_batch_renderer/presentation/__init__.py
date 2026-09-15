@@ -4,10 +4,10 @@ import bpy
 
 from . import runtime_state
 from .operators import RAC_OT_cancel, RAC_OT_render_all, install_handlers, remove_handlers
-from .panel import RAC_PT_panel
+from .panel import RAC_PT_panel, RAC_PT_view3d_panel
 from .properties import RAC_Settings
 
-CLASSES = (RAC_Settings, RAC_OT_render_all, RAC_OT_cancel, RAC_PT_panel)
+CLASSES = (RAC_Settings, RAC_OT_render_all, RAC_OT_cancel, RAC_PT_panel, RAC_PT_view3d_panel)
 
 
 def register() -> None:

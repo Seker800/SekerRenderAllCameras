@@ -73,6 +73,14 @@ def main() -> None:
 
         camera_batch_renderer.register()
         assert_true(hasattr(bpy.types.Scene, "rac_settings"), "Scene settings not registered")
+        from camera_batch_renderer.presentation.panel import (  # noqa: PLC0415
+            RAC_PT_panel,
+            RAC_PT_view3d_panel,
+        )
+
+        assert_true(RAC_PT_panel.is_registered, "Output Properties panel not registered")
+        assert_true(RAC_PT_view3d_panel.is_registered, "3D Viewport N-panel not registered")
+        assert_true(RAC_PT_view3d_panel.bl_category == "Batch Render", "N-panel tab is wrong")
         session = run_batch_sync(scene, include_alpha=True, include_object_id=True)
         progress = session.coordinator.snapshot()
         assert_true(progress.status.value == "completed", "Batch did not complete")

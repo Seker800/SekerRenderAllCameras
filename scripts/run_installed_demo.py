@@ -16,6 +16,9 @@ def main() -> None:
     auxiliary = importlib.import_module(
         "bl_ext.user_default.camera_batch_renderer.blender.auxiliary"
     )
+    panel = importlib.import_module("bl_ext.user_default.camera_batch_renderer.presentation.panel")
+    assert_true(panel.RAC_PT_view3d_panel.is_registered, "Installed N-panel is not registered")
+    assert_true(panel.RAC_PT_view3d_panel.bl_category == "Batch Render", "N-panel tab is wrong")
     scene = bpy.context.scene
     original_camera = scene.camera
     original_filepath = scene.render.filepath

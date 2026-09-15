@@ -6,7 +6,8 @@ Render still images from every camera in the current Blender Scene. The Extensio
 ## Use
 
 1. Save the `.blend` file.
-2. Open **Output Properties → Render All Cameras**.
+2. In the 3D Viewport, press **N** and open **Batch Render → Render All Cameras**. The same
+   controls remain available under **Output Properties → Render All Cameras**.
 3. Choose a batch prefix and optionally enable Alpha or Object ID.
 4. Click **Render All Cameras**.
 

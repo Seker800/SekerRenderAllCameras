@@ -20,7 +20,8 @@ Beauty、Alpha 与 Object ID 三通道批量渲染已经可用。输出默认位
 
 1. 在 Blender 4.5 LTS 或 5.2 LTS 中打开 `Edit → Preferences → Get Extensions`。
 2. 通过右上角菜单选择 `Install from Disk`，安装 `dist/camera_batch_renderer-0.1.0.zip`。
-3. 保存 `.blend`，在 `Output Properties → Render All Cameras` 中选择批次前缀与可选通道。
+3. 保存 `.blend`，在 `3D Viewport → N → Batch Render` 中选择批次前缀与可选通道；
+   原来的 `Output Properties → Render All Cameras` 入口也会保留。
 4. 点击 `Render All Cameras`；可在运行期间点击 `Cancel Batch` 协作式停止。
 
 可直接打开 `examples/RenderAllCameras_Demo.blend` 体验完整流程。该场景包含两台摄影机，
