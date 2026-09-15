@@ -13,7 +13,7 @@ automatic filenames, optional alpha masks, Object ID maps, and JSON manifests.
 [![Blender 4.0.2+](https://img.shields.io/badge/Blender-4.0.2%2B-F5792A?logo=blender&logoColor=white)](#compatibility)
 [![License: GPL v3+](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](LICENSE)
 
-> **[Download the latest ready-to-install ZIP](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.1.1.zip)** — do not unzip it.
+> Blender 4.2 or newer: **[download the Extension ZIP](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.2.0.zip)**. Blender 4.0.2–4.1: **[download the Legacy Add-on ZIP](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.2.0-legacy.zip)**. Do not unzip either package.
 
 ## Why use it?
 
