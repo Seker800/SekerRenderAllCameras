@@ -15,24 +15,48 @@ automatic filenames, optional alpha masks, Object ID maps, and JSON manifests.
 
 > Blender 4.2 or newer: **[download the Extension ZIP](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.2.1.zip)**. Blender 4.0.2–4.1: **[download the Legacy Add-on ZIP](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.2.1-legacy.zip)**. Do not unzip either package.
 
+## Plugin at a glance
+
+[![Render All Cameras panel in Blender's 3D Viewport](Docs/images/plugin-quick-start.jpg)](Docs/images/plugin-quick-start.jpg)
+
+Save the `.blend`, press <kbd>N</kbd> in the 3D Viewport, open **Batch Render**, choose the optional
+Alpha/Object ID outputs, and click **Render All Cameras**. The plugin renders every usable camera to
+the fixed `SekerRenderAllCameras/` folder next to the saved `.blend`.
+
+中文：保存 `.blend`，在 3D 视图按 <kbd>N</kbd>，打开 **Batch Render**；按需勾选 Alpha / Object ID，
+然后点击 **Render All Cameras**。点击截图可查看原始大图。
+
+## What's new in 0.3.0
+
+- Batch IDs and `001`, `002`, … subfolders are gone.
+- Every run uses the same `SekerRenderAllCameras/` folder beside the `.blend`.
+- A successfully rendered file replaces the old file with the same name. Old files that were not
+  generated in the current run stay in place.
+- Existing legacy `RenderOutput/` folders are left untouched; the plugin does not migrate or delete
+  previous renders.
+
+中文：0.3.0 不再生成批次编号和数字子目录。新图成功后覆盖同名旧图，本轮没有生成的旧图继续
+保留；以前的 `RenderOutput/` 目录不会被自动移动或删除。
+
 ## Why use it?
 
 - Render every camera in the current Scene with one click—built for still images, not animation.
 - Keep the current Blender render settings for Beauty output.
 - Add an optional lossless grayscale Alpha mask for each camera.
 - Add an optional exact-color Object ID map plus a machine-readable color mapping JSON.
-- Name files from the batch prefix, `.blend` file, camera, channel, resolution, and render engine.
-- Allocate `001`, `002`, … batch folders safely without overwriting existing work.
+- Name files from the `.blend` file, camera, channel, resolution, and render engine.
+- Reuse one `SekerRenderAllCameras/` folder: newly rendered files replace matching old files, while
+  outputs not generated in the current run remain untouched.
 - Track progress, cancel cooperatively, record failures, and restore the active camera and settings.
 
 Example filenames:
 
 ```text
-001_ProductShot_Camera_Front_Beauty_1920x1080_Cycles.png
-001_ProductShot_Camera_Front_Alpha_1920x1080.png
-001_ProductShot_Camera_Front_ObjectID_1920x1080_Object.png
-001_ProductShot_RenderInfo.json
-001_ProductShot_ObjectID.json
+ProductShot_Camera_Front_Beauty_1920x1080_Cycles.png
+ProductShot_Camera_Front_Alpha_1920x1080.png
+ProductShot_Camera_Front_ObjectID_1920x1080_Object.png
+ProductShot_RenderInfo.json
+ProductShot_ObjectID.json
 ```
 
 ## Install
@@ -55,7 +79,7 @@ Example filenames:
 1. Save the `.blend` file—the output location is based on it.
 2. Put the mouse over the 3D Viewport and press <kbd>N</kbd>.
 3. Open **Batch Render → Render All Cameras**.
-4. Choose the starting batch number and enable Alpha and/or Object ID if needed.
+4. Enable Alpha and/or Object ID if needed.
 5. Click **Render All Cameras**.
 
 The same controls are also available under **Output Properties → Render All Cameras**. Results are
@@ -64,13 +88,12 @@ written next to the `.blend` file:
 ```text
 MyProject/
 ├─ ProductShot.blend
-└─ RenderOutput/
-   └─ 001/
-      ├─ ...Beauty....png
-      ├─ ...Alpha....png
-      ├─ ...ObjectID....png
-      ├─ ...RenderInfo.json
-      └─ ...ObjectID.json
+└─ SekerRenderAllCameras/
+   ├─ ...Beauty....png
+   ├─ ...Alpha....png
+   ├─ ...ObjectID....png
+   ├─ ...RenderInfo.json
+   └─ ...ObjectID.json
 ```
 
 中文快速使用：Blender 4.2+ 下载 Extension 包并选择“从磁盘安装”；Blender 4.0.2–4.1
@@ -113,7 +136,7 @@ blender --background --factory-startup --python scripts/run_blender_tests.py
 powershell -ExecutionPolicy Bypass -File scripts/build_extension.ps1
 ```
 
-The test suite covers naming, natural camera order, atomic batch allocation and manifests, state
+The test suite covers naming, natural camera order, fixed-folder preservation and manifests, state
 restoration, cancellation, handled failures, Alpha/Object ID pixels, Blender 4.0.2/4.1/4.2/4.5/5.2
 integration, both package formats, installed-package rendering, and UI registration.
 

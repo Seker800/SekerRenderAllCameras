@@ -6,7 +6,6 @@ from camera_batch_renderer.domain import (
     BatchStatus,
     CameraSpec,
     Channel,
-    ConflictPolicy,
     RenderPlan,
     RenderSettings,
     ResultStatus,
@@ -15,8 +14,6 @@ from camera_batch_renderer.domain import (
 
 def make_plan() -> RenderPlan:
     return RenderPlan(
-        batch_number=1,
-        batch_label="001",
         blend_path=Path("shot.blend"),
         blend_name="shot",
         output_directory=Path("out"),
@@ -29,7 +26,6 @@ def make_plan() -> RenderPlan:
         ),
         channels=(Channel.BEAUTY,),
         settings=RenderSettings("BLENDER_WORKBENCH", "Workbench", 32, 32, "PNG", ".png"),
-        conflict_policy=ConflictPolicy.NEXT_BATCH,
     )
 
 

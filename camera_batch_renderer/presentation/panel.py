@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import bpy
 
+from ..domain.naming import OUTPUT_DIRECTORY_NAME
 from . import runtime_state
 
 
 def draw_controls(layout: bpy.types.UILayout, context: bpy.types.Context) -> None:
     settings = context.scene.rac_settings
-    layout.prop(settings, "batch_start")
     row = layout.row(align=True)
     row.prop(settings, "include_alpha")
     row.prop(settings, "include_object_id")
@@ -20,7 +20,7 @@ def draw_controls(layout: bpy.types.UILayout, context: bpy.types.Context) -> Non
             layout.label(text="Waiting for current image…", icon="INFO")
         else:
             layout.operator("render.cancel_all_cameras", icon="CANCEL")
-    layout.label(text="Output: //RenderOutput/<batch>/", icon="FILE_FOLDER")
+    layout.label(text=f"Output: //{OUTPUT_DIRECTORY_NAME}/", icon="FILE_FOLDER")
 
 
 class RAC_PT_panel(bpy.types.Panel):

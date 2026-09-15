@@ -2,19 +2,19 @@ from __future__ import annotations
 
 import bpy
 
+from ..application import RENDER_CANCELLED, RENDER_COMPLETE, resolve_render_event
 from ..blender.runtime import BlenderBatchSession, create_session
-from ..domain import BatchStatus
 from . import runtime_state
 
 
 def _render_complete(*_args: object) -> None:
     if runtime_state.active_session is not None:
-        runtime_state.render_event = "complete"
+        runtime_state.render_event = RENDER_COMPLETE
 
 
 def _render_cancel(*_args: object) -> None:
     if runtime_state.active_session is not None:
-        runtime_state.render_event = "cancelled"
+        runtime_state.render_event = RENDER_CANCELLED
 
 
 def _load_pre(*_args: object) -> None:
@@ -61,7 +61,6 @@ class RAC_OT_render_all(bpy.types.Operator):
         try:
             session = create_session(
                 context.scene,
-                batch_start=settings.batch_start,
                 include_alpha=settings.include_alpha,
                 include_object_id=settings.include_object_id,
             )
@@ -88,10 +87,16 @@ class RAC_OT_render_all(bpy.types.Operator):
         session = runtime_state.active_session
         if session is None:
             return self._finish(context, cancelled=True)
-        if runtime_state.render_event == "cancelled":
+        action = session.coordinator.current_action
+        resolved_event = resolve_render_event(
+            runtime_state.render_event,
+            render_job_running=bpy.app.is_job_running("RENDER"),
+            output_exists=bool(action and session.adapter.has_fresh_output(action)),
+        )
+        if resolved_event == RENDER_CANCELLED:
             session.cancel()
             return self._finish(context, cancelled=True)
-        if runtime_state.render_event != "complete":
+        if resolved_event != RENDER_COMPLETE:
             return {"PASS_THROUGH"}
         runtime_state.render_event = None
         session.complete_current()
@@ -136,8 +141,6 @@ class RAC_OT_render_all(bpy.types.Operator):
             session.finish()
             status = session.coordinator.snapshot().status
             context.scene.rac_settings.status_text = status.value.replace("_", " ").title()
-            if status is BatchStatus.COMPLETED:
-                context.scene.rac_settings.batch_start = session.allocation.number + 1
         self._remove_timer(context)
         runtime_state.clear()
         return {"CANCELLED"} if cancelled else {"FINISHED"}
@@ -159,6 +162,4 @@ class RAC_OT_cancel(bpy.types.Operator):
             return {"CANCELLED"}
         session.coordinator.request_cancel()
         context.scene.rac_settings.status_text = "Stopping after current image"
-        if not bpy.app.is_job_running("RENDER"):
-            runtime_state.render_event = "cancelled"
         return {"FINISHED"}

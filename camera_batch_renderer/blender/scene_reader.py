@@ -4,8 +4,8 @@ from pathlib import Path
 
 import bpy
 
-from ..domain import Channel, ConflictPolicy, RenderPlan, RenderSettings
-from ..domain.naming import camera_specs, format_batch
+from ..domain import Channel, RenderPlan, RenderSettings
+from ..domain.naming import camera_specs
 
 SUPPORTED_FORMATS = {"PNG", "JPEG", "TIFF", "OPEN_EXR", "OPEN_EXR_MULTILAYER"}
 AUXILIARY_ENGINES = {
@@ -43,7 +43,6 @@ def validate_scene(scene: bpy.types.Scene, *, include_alpha: bool, include_objec
 def build_render_plan(
     scene: bpy.types.Scene,
     *,
-    batch_number: int,
     include_alpha: bool,
     include_object_id: bool,
     output_directory: Path,
@@ -67,8 +66,6 @@ def build_render_plan(
         "BLENDER_WORKBENCH": "Workbench",
     }.get(engine, engine)
     return RenderPlan(
-        batch_number=batch_number,
-        batch_label=format_batch(batch_number),
         blend_path=blend_path,
         blend_name=blend_path.stem,
         output_directory=output_directory,
@@ -87,5 +84,4 @@ def build_render_plan(
             samples=_samples(scene),
             film_transparent=scene.render.film_transparent,
         ),
-        conflict_policy=ConflictPolicy.NEXT_BATCH,
     )

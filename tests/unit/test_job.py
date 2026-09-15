@@ -6,7 +6,6 @@ from camera_batch_renderer.domain import (
     BatchStatus,
     CameraSpec,
     Channel,
-    ConflictPolicy,
     RenderPlan,
     RenderSettings,
 )
@@ -14,18 +13,15 @@ from camera_batch_renderer.domain import (
 
 def make_plan() -> RenderPlan:
     return RenderPlan(
-        batch_number=1,
-        batch_label="001",
         blend_path=Path("file.blend"),
         blend_name="file",
-        output_directory=Path("RenderOutput/001"),
+        output_directory=Path("SekerRenderAllCameras"),
         scene_name="Scene",
         view_layer_name="ViewLayer",
         frame=1,
         cameras=(CameraSpec("a", "A", "A"), CameraSpec("b", "B", "B")),
         channels=(Channel.BEAUTY,),
         settings=RenderSettings("CYCLES", "Cycles", 100, 100, "PNG", ".png"),
-        conflict_policy=ConflictPolicy.NEXT_BATCH,
     )
 
 

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import shutil
+import tempfile
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -9,13 +11,13 @@ import bpy
 
 from ..application import BatchCoordinator, RenderAction
 from ..domain import BatchStatus, Channel, ResultStatus
-from ..domain.naming import fit_path, output_filename
+from ..domain.naming import OUTPUT_DIRECTORY_NAME, fit_path, output_filename
 from ..infrastructure.manifest import AtomicJsonWriter
 from ..infrastructure.storage import (
-    BatchAllocation,
-    allocate_batch,
+    OutputAllocation,
     mark_complete,
     mark_incomplete,
+    prepare_output_directory,
 )
 from .render_adapter import BlenderRenderAdapter
 from .scene_reader import build_render_plan, validate_scene
@@ -25,7 +27,8 @@ from .state_transaction import BlenderStateTransaction
 @dataclass(slots=True)
 class BlenderBatchSession:
     scene: bpy.types.Scene
-    allocation: BatchAllocation
+    allocation: OutputAllocation
+    staging_directory: Path
     coordinator: BatchCoordinator
     adapter: BlenderRenderAdapter
     transaction: BlenderStateTransaction
@@ -77,22 +80,24 @@ class BlenderBatchSession:
         self.write_manifest()
 
     def finish(self) -> None:
-        self.adapter.cleanup_auxiliary()
-        self.transaction.restore()
-        if self.coordinator.snapshot().status is BatchStatus.COMPLETED:
-            mark_complete(self.allocation)
-        else:
-            mark_incomplete(self.allocation)
-        self.write_manifest()
+        try:
+            self.adapter.cleanup_auxiliary()
+            self.transaction.restore()
+            if self.coordinator.snapshot().status is BatchStatus.COMPLETED:
+                mark_complete(self.allocation)
+            else:
+                mark_incomplete(self.allocation)
+            self.write_manifest()
+        finally:
+            shutil.rmtree(self.staging_directory, ignore_errors=True)
 
     def write_manifest(self) -> None:
         progress = self.coordinator.snapshot()
         payload = {
-            "schema_version": 1,
-            "addon_version": "0.2.1",
+            "schema_version": 2,
+            "addon_version": "0.3.0",
             "blender_version": bpy.app.version_string,
             "status": progress.status.value,
-            "batch": self.coordinator.plan.batch_label,
             "blend_file": str(self.coordinator.plan.blend_path),
             "scene": self.coordinator.plan.scene_name,
             "frame": self.coordinator.plan.frame,
@@ -137,7 +142,7 @@ class BlenderBatchSession:
         if not self.adapter.id_colors:
             return
         path = self.allocation.directory / (
-            f"{self.coordinator.plan.batch_label}_{self.coordinator.plan.blend_name}_ObjectID.json"
+            f"{self.coordinator.plan.blend_name}_ObjectID.json"
         )
         AtomicJsonWriter(path).write(
             {
@@ -155,17 +160,16 @@ class BlenderBatchSession:
 def create_session(
     scene: bpy.types.Scene,
     *,
-    batch_start: int,
     include_alpha: bool,
     include_object_id: bool,
 ) -> BlenderBatchSession:
     validate_scene(scene, include_alpha=include_alpha, include_object_id=include_object_id)
-    root = Path(bpy.data.filepath).parent / "RenderOutput"
-    allocation = allocate_batch(root, batch_start)
+    output_directory = Path(bpy.data.filepath).parent / OUTPUT_DIRECTORY_NAME
+    allocation = prepare_output_directory(output_directory)
+    staging_directory = Path(tempfile.mkdtemp(prefix=".staging-", dir=output_directory))
     try:
         plan = build_render_plan(
             scene,
-            batch_number=allocation.number,
             include_alpha=include_alpha,
             include_object_id=include_object_id,
             output_directory=allocation.directory,
@@ -175,7 +179,6 @@ def create_session(
             / fit_path(
                 allocation.directory,
                 output_filename(
-                    batch_label=plan.batch_label,
                     blend_name=plan.blend_name,
                     camera_name=camera.output_name,
                     channel=channel,
@@ -189,32 +192,32 @@ def create_session(
         return BlenderBatchSession(
             scene=scene,
             allocation=allocation,
+            staging_directory=staging_directory,
             coordinator=BatchCoordinator(plan, outputs),
-            adapter=BlenderRenderAdapter(scene),
+            adapter=BlenderRenderAdapter(scene, staging_directory),
             transaction=transaction,
             manifest=AtomicJsonWriter(
-                allocation.directory / f"{plan.batch_label}_{plan.blend_name}_RenderInfo.json"
+                allocation.directory / f"{plan.blend_name}_RenderInfo.json"
             ),
         )
     except Exception:
+        shutil.rmtree(staging_directory, ignore_errors=True)
         mark_incomplete(allocation)
         raise
 
 
-def run_beauty_batch_sync(scene: bpy.types.Scene, batch_start: int = 1) -> BlenderBatchSession:
-    return run_batch_sync(scene, batch_start=batch_start)
+def run_beauty_batch_sync(scene: bpy.types.Scene) -> BlenderBatchSession:
+    return run_batch_sync(scene)
 
 
 def run_batch_sync(
     scene: bpy.types.Scene,
     *,
-    batch_start: int = 1,
     include_alpha: bool = False,
     include_object_id: bool = False,
 ) -> BlenderBatchSession:
     session = create_session(
         scene,
-        batch_start=batch_start,
         include_alpha=include_alpha,
         include_object_id=include_object_id,
     )

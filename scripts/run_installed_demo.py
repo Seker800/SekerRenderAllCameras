@@ -24,7 +24,6 @@ def main() -> None:
     original_filepath = scene.render.filepath
     session = runtime.run_batch_sync(
         scene,
-        batch_start=1,
         include_alpha=True,
         include_object_id=True,
     )
@@ -70,7 +69,6 @@ def main() -> None:
         "INSTALLED_DEMO_OK",
         json.dumps(
             {
-                "batch": session.allocation.label,
                 "directory": str(session.allocation.directory),
                 "results": len(progress.results),
                 "render_info": render_info.name,

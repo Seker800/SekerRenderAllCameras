@@ -12,12 +12,6 @@ class Channel(StrEnum):
     OBJECT_ID = "ObjectID"
 
 
-class ConflictPolicy(StrEnum):
-    NEXT_BATCH = "NEXT_BATCH"
-    SKIP = "SKIP"
-    OVERWRITE = "OVERWRITE"
-
-
 class BatchStatus(StrEnum):
     IDLE = "idle"
     IN_PROGRESS = "in_progress"
@@ -30,7 +24,6 @@ class ResultStatus(StrEnum):
     PENDING = "pending"
     SUCCEEDED = "succeeded"
     FAILED = "failed"
-    SKIPPED_EXISTING = "skipped_existing"
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,8 +47,6 @@ class RenderSettings:
 
 @dataclass(frozen=True, slots=True)
 class RenderPlan:
-    batch_number: int
-    batch_label: str
     blend_path: Path
     blend_name: str
     output_directory: Path
@@ -65,7 +56,6 @@ class RenderPlan:
     cameras: tuple[CameraSpec, ...]
     channels: tuple[Channel, ...]
     settings: RenderSettings
-    conflict_policy: ConflictPolicy
 
 
 @dataclass(frozen=True, slots=True)

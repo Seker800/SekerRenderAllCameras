@@ -1,6 +1,6 @@
 """Filesystem and serialization adapters."""
 
 from .manifest import AtomicJsonWriter
-from .storage import BatchAllocation, allocate_batch, find_next_batch
+from .storage import OutputAllocation, prepare_output_directory
 
-__all__ = ["AtomicJsonWriter", "BatchAllocation", "allocate_batch", "find_next_batch"]
+__all__ = ["AtomicJsonWriter", "OutputAllocation", "prepare_output_directory"]

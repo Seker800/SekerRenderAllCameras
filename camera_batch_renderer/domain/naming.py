@@ -19,6 +19,8 @@ _WINDOWS_RESERVED = {
     *(f"LPT{i}" for i in range(1, 10)),
 }
 
+OUTPUT_DIRECTORY_NAME = "SekerRenderAllCameras"
+
 
 def natural_key(value: str) -> tuple[object, ...]:
     normalized = unicodedata.normalize("NFKC", value).casefold()
@@ -34,12 +36,6 @@ def sanitize_component(value: str, *, fallback: str = "Unnamed", max_length: int
     if value.split(".", 1)[0].upper() in _WINDOWS_RESERVED:
         value = f"_{value}"
     return value[:max_length].rstrip(" ._") or fallback
-
-
-def format_batch(number: int) -> str:
-    if number < 0:
-        raise ValueError("batch number must be non-negative")
-    return f"{number:03d}"
 
 
 def camera_specs(cameras: Iterable[tuple[str, str]]) -> tuple[CameraSpec, ...]:
@@ -64,7 +60,6 @@ def camera_specs(cameras: Iterable[tuple[str, str]]) -> tuple[CameraSpec, ...]:
 
 def output_filename(
     *,
-    batch_label: str,
     blend_name: str,
     camera_name: str,
     channel: Channel,
@@ -75,7 +70,6 @@ def output_filename(
     dimensions = f"{settings.width}x{settings.height}"
     if channel is Channel.BEAUTY:
         pieces = [
-            batch_label,
             safe_blend,
             safe_camera,
             channel.value,
@@ -86,10 +80,10 @@ def output_filename(
             pieces.append(f"S{settings.samples}")
         extension = settings.file_extension
     elif channel is Channel.ALPHA:
-        pieces = [batch_label, safe_blend, safe_camera, channel.value, dimensions]
+        pieces = [safe_blend, safe_camera, channel.value, dimensions]
         extension = ".png"
     else:
-        pieces = [batch_label, safe_blend, safe_camera, channel.value, dimensions, "Object"]
+        pieces = [safe_blend, safe_camera, channel.value, dimensions, "Object"]
         extension = ".png"
     if not extension.startswith("."):
         extension = f".{extension}"

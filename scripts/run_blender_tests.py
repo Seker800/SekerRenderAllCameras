@@ -95,6 +95,14 @@ def main() -> None:
             len(list(session.allocation.directory.glob("*_RenderInfo.json"))) == 1,
             "Manifest missing",
         )
+        assert_true(
+            session.allocation.directory == temporary / "SekerRenderAllCameras",
+            "Output directory is not the fixed product folder",
+        )
+        assert_true(
+            all(not result.path.name.startswith("001_") for result in progress.results),
+            "A numeric batch prefix leaked into an output filename",
+        )
         id_manifests = list(session.allocation.directory.glob("*_ObjectID.json"))
         assert_true(len(id_manifests) == 1, "Object ID manifest missing")
         id_payload = json.loads(id_manifests[0].read_text(encoding="utf-8"))
@@ -114,7 +122,16 @@ def main() -> None:
             )
 
         scene.render.film_transparent = True
-        transparent_session = run_batch_sync(scene, batch_start=2, include_alpha=True)
+        object_id_paths = {
+            result.path for result in progress.results if result.channel.value == "ObjectID"
+        }
+        overwritten_path = next(
+            result.path for result in progress.results if result.channel.value == "Beauty"
+        )
+        overwritten_path.write_bytes(b"old output")
+        stale_file = session.allocation.directory / "not-generated-this-run.png"
+        stale_file.write_bytes(b"keep me")
+        transparent_session = run_batch_sync(scene, include_alpha=True)
         transparent_progress = transparent_session.coordinator.snapshot()
         assert_true(len(transparent_progress.results) == 4, "Transparent Alpha reuse failed")
         assert_true(
@@ -122,13 +139,29 @@ def main() -> None:
             "Transparent Alpha output missing",
         )
         assert_true(
+            all(path.exists() for path in object_id_paths),
+            "Outputs for a disabled channel were removed",
+        )
+        assert_true(stale_file.read_bytes() == b"keep me", "Unrelated old output was changed")
+        assert_true(
+            overwritten_path.read_bytes().startswith(b"\x89PNG"),
+            "A successful new render did not replace the same-name old output",
+        )
+        assert_true(
+            {result.path for result in transparent_progress.results}
+            == {
+                result.path
+                for result in progress.results
+                if result.channel.value in {"Beauty", "Alpha"}
+            },
+            "A repeated render did not target the same output paths",
+        )
+        assert_true(
             not any(item.name.startswith("RAC_") for item in bpy.data.scenes),
             "Temporary scene leaked",
         )
 
-        cancelled = create_session(
-            scene, batch_start=3, include_alpha=False, include_object_id=False
-        )
+        cancelled = create_session(scene, include_alpha=False, include_object_id=False)
         cancelled.start()
         cancelled.prepare_current()
         cancelled.cancel()
@@ -145,9 +178,7 @@ def main() -> None:
 
         from camera_batch_renderer.presentation import runtime_state  # noqa: PLC0415
 
-        button_cancelled = create_session(
-            scene, batch_start=5, include_alpha=False, include_object_id=False
-        )
+        button_cancelled = create_session(scene, include_alpha=False, include_object_id=False)
         button_cancelled.start()
         runtime_state.active_session = button_cancelled
         runtime_state.render_event = None
@@ -159,12 +190,15 @@ def main() -> None:
             button_cancelled.coordinator.snapshot().cancel_requested,
             "Cancel button did not request cancellation",
         )
-        assert_true(runtime_state.render_event == "cancelled", "Idle cancel event was not queued")
+        assert_true(
+            runtime_state.render_event is None,
+            "Cancel button must not impersonate a Blender render cancellation",
+        )
         button_cancelled.cancel()
         button_cancelled.finish()
         runtime_state.clear()
 
-        failed = create_session(scene, batch_start=4, include_alpha=False, include_object_id=False)
+        failed = create_session(scene, include_alpha=False, include_object_id=False)
         failed.start()
         failed.prepare_current()
         failed.fail("injected failure")
@@ -172,7 +206,16 @@ def main() -> None:
         failed_info = next(failed.allocation.directory.glob("*_RenderInfo.json"))
         failed_payload = json.loads(failed_info.read_text(encoding="utf-8"))
         assert_true(failed_payload["status"] == "failed", "Failure status is wrong")
+        assert_true(failed_payload["schema_version"] == 2, "RenderInfo schema was not upgraded")
+        assert_true("batch" not in failed_payload, "Removed batch field leaked into RenderInfo")
         assert_true(scene.render.filepath == original_filepath, "Failure did not restore filepath")
+        assert_true(
+            not any(
+                path.name.startswith(".staging-")
+                for path in session.allocation.directory.iterdir()
+            ),
+            "A render staging directory leaked",
+        )
 
         camera_batch_renderer.unregister()
         assert_true(not hasattr(bpy.types.Scene, "rac_settings"), "Scene settings leaked")

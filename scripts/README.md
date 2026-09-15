@@ -1,5 +1,8 @@
 # Scripts
 
+`run_gui_render_tests.py` 从“新渲染窗口”用户偏好启动真实 GUI 三摄影机批次，并主动移除
+`render_complete` handler，验证渲染启动期间的弹窗抑制、输出文件后备信号推进、当前图片后停止和用户偏好不变。
+
 存放可复现的测试、打包和本地开发入口。脚本必须支持非交互执行、正确退出码和明确工作目录；不得写入用户 Blender 配置、安装/升级 MCP 或覆盖 `.blend`，除非脚本名称和文档明确说明且由用户主动执行。
 
 - `build_extension.ps1`：使用 4.2+ Blender 校验并构建 Extension ZIP，同时从同一源码构建 4.0.2–4.1 Legacy Add-on ZIP。

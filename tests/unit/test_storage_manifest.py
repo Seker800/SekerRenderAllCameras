@@ -5,19 +5,23 @@ from pathlib import Path
 
 from camera_batch_renderer.infrastructure.manifest import AtomicJsonWriter
 from camera_batch_renderer.infrastructure.storage import (
-    allocate_batch,
     mark_complete,
     mark_incomplete,
+    prepare_output_directory,
 )
 
 
 class StorageTests(unittest.TestCase):
-    def test_batch_allocation_and_markers(self):
+    def test_fixed_output_directory_preserves_existing_files_and_updates_markers(self):
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            first = allocate_batch(root)
-            second = allocate_batch(root)
-            self.assertEqual((first.label, second.label), ("001", "002"))
+            output = Path(directory) / "SekerRenderAllCameras"
+            output.mkdir()
+            existing = output / "old.png"
+            existing.write_bytes(b"old")
+            first = prepare_output_directory(output)
+            second = prepare_output_directory(output)
+            self.assertEqual(first.directory, second.directory)
+            self.assertEqual(existing.read_bytes(), b"old")
             self.assertTrue(first.marker.exists())
             incomplete = mark_incomplete(first)
             self.assertTrue(incomplete.exists())
