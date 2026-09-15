@@ -6,10 +6,11 @@ automatic filenames, optional alpha masks, Object ID maps, and JSON manifests.
 一键逐个渲染 Blender 当前场景中的全部摄影机，并自动输出规范命名的静帧、Alpha、Object ID
 和 JSON 清单。
 
-[![Download Blender Extension](https://img.shields.io/badge/Download-Blender_Extension-F5792A?style=for-the-badge&logo=blender&logoColor=white)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.1.1.zip)
+[![Download Blender Extension](https://img.shields.io/badge/Download-Extension_4.2+-F5792A?style=for-the-badge&logo=blender&logoColor=white)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.2.0.zip)
+[![Download Legacy Add-on](https://img.shields.io/badge/Download-Legacy_4.0.2%E2%80%934.1-555555?style=for-the-badge&logo=blender&logoColor=white)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.2.0-legacy.zip)
 
 [![Latest release](https://img.shields.io/github/v/release/Seker800/SekerRenderAllCameras)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest)
-[![Blender 4.5–5.2](https://img.shields.io/badge/Blender-4.5%20LTS%E2%80%935.2%20LTS-F5792A?logo=blender&logoColor=white)](#compatibility)
+[![Blender 4.0.2+](https://img.shields.io/badge/Blender-4.0.2%2B-F5792A?logo=blender&logoColor=white)](#compatibility)
 [![License: GPL v3+](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](LICENSE)
 
 > **[Download the latest ready-to-install ZIP](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.1.1.zip)** — do not unzip it.
@@ -36,10 +37,18 @@ Example filenames:
 
 ## Install
 
-1. **[Download `camera_batch_renderer-0.1.1.zip`](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.1.1.zip)**.
+### Blender 4.2 or newer
+
+1. **[Download `camera_batch_renderer-0.2.0.zip`](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.2.0.zip)**.
 2. In Blender, open **Edit → Preferences → Get Extensions**.
 3. Open the top-right menu and choose **Install from Disk**.
 4. Select the downloaded ZIP. Do not extract it first.
+
+### Blender 4.0.2–4.1
+
+1. **[Download `camera_batch_renderer-0.2.0-legacy.zip`](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.2.0-legacy.zip)**.
+2. In Blender, open **Edit → Preferences → Add-ons**.
+3. Click **Install…**, choose the downloaded ZIP, then enable **Render: Render All Cameras**.
 
 ## Quick start
 
@@ -64,8 +73,9 @@ MyProject/
       └─ ...ObjectID.json
 ```
 
-中文快速使用：下载上方 ZIP，不要解压；在 Blender 中选择“从磁盘安装”，保存 `.blend` 后，
-将鼠标放到 3D 视图并按 <kbd>N</kbd>，进入 **Batch Render** 标签即可开始批量渲染。
+中文快速使用：Blender 4.2+ 下载 Extension 包并选择“从磁盘安装”；Blender 4.0.2–4.1
+下载 Legacy 包并从“插件”页安装。不要解压 ZIP。保存 `.blend` 后，将鼠标放到 3D 视图并按
+<kbd>N</kbd>，进入 **Batch Render** 标签即可开始批量渲染。
 
 ## Demo
 
@@ -77,11 +87,18 @@ Object ID images, `RenderInfo.json`, and `ObjectID.json`.
 
 | Environment | Status |
 | --- | --- |
-| Blender 4.5 LTS | Tested |
-| Blender 5.2 LTS | Tested |
-| Blender 4.4 and earlier | Not supported |
+| Blender 4.0.2 | Tested; minimum supported version |
+| Blender 4.1.1 | Tested |
+| Blender 4.2.0 | Tested; first Extension version |
+| Blender 4.5.11 LTS | Tested |
+| Blender 5.2.1 LTS | Tested |
+| Blender 4.0.0–4.0.1 and earlier | Not supported |
 | Cycles, EEVEE, Workbench | Beauty and auxiliary channels supported |
 | Third-party render engines | Beauty only by default |
+
+No maximum Blender version is declared. New Blender releases are intended to remain supported, but
+the tested versions above are the release gates. Blender 4.0.2–4.1 use the Legacy package because
+the official Extensions system begins with Blender 4.2.
 
 Object ID does not currently include Volume objects. Animation, Material ID, Cryptomatte,
 Multiview, multi-Scene queues, and distributed rendering are outside the first release.
@@ -97,8 +114,8 @@ powershell -ExecutionPolicy Bypass -File scripts/build_extension.ps1
 ```
 
 The test suite covers naming, natural camera order, atomic batch allocation and manifests, state
-restoration, cancellation, handled failures, Alpha/Object ID pixels, Blender 4.5/5.2 integration,
-installed-package rendering, and UI registration.
+restoration, cancellation, handled failures, Alpha/Object ID pixels, Blender 4.0.2/4.1/4.2/4.5/5.2
+integration, both package formats, installed-package rendering, and UI registration.
 
 Architecture and implementation documentation lives in [`Docs/`](Docs/README.md). The original
 product scope is recorded in [`PLAN.md`](PLAN.md).
