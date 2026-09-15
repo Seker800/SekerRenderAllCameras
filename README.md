@@ -1,37 +1,112 @@
-# 全摄影机批量渲染
+# Render All Cameras for Blender
 
-这是一个 Blender 插件项目：按稳定顺序批量渲染当前场景的全部摄影机，并可输出 Beauty、Alpha、Object ID 与任务清单。
+**One-click batch rendering for every camera in a Blender scene.** Render still images with
+automatic filenames, optional alpha masks, Object ID maps, and JSON manifests.
 
-当前产品定义见 [`PLAN.md`](PLAN.md)。项目知识库入口见 [`Docs/README.md`](Docs/README.md)，Agent 协作规则见 [`AGENTS.md`](AGENTS.md)，开发环境和 Blender MCP 部署见 [`Docs/tools/开发环境与插件.md`](Docs/tools/开发环境与插件.md)。
+一键逐个渲染 Blender 当前场景中的全部摄影机，并自动输出规范命名的静帧、Alpha、Object ID
+和 JSON 清单。
 
-## 目录约定
+[![Download Blender Extension](https://img.shields.io/badge/Download-Blender_Extension-F5792A?style=for-the-badge&logo=blender&logoColor=white)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.1.0.zip)
+
+[![Latest release](https://img.shields.io/github/v/release/Seker800/SekerRenderAllCameras)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest)
+[![Blender 4.5–5.2](https://img.shields.io/badge/Blender-4.5%20LTS%E2%80%935.2%20LTS-F5792A?logo=blender&logoColor=white)](#compatibility)
+[![License: GPL v3+](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](LICENSE)
+
+> **[Download the latest ready-to-install ZIP](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.1.0.zip)** — do not unzip it.
+
+## Why use it?
+
+- Render every camera in the current Scene with one click—built for still images, not animation.
+- Keep the current Blender render settings for Beauty output.
+- Add an optional lossless grayscale Alpha mask for each camera.
+- Add an optional exact-color Object ID map plus a machine-readable color mapping JSON.
+- Name files from the batch prefix, `.blend` file, camera, channel, resolution, and render engine.
+- Allocate `001`, `002`, … batch folders safely without overwriting existing work.
+- Track progress, cancel cooperatively, record failures, and restore the active camera and settings.
+
+Example filenames:
 
 ```text
-camera_batch_renderer/  # 可安装的 Blender 插件包
-tests/                  # 不依赖 Blender 的单元测试与 Blender 集成测试入口
-scripts/                # 开发、验证和打包脚本
-examples/               # 可直接打开的双摄影机验收场景
-Docs/                   # 架构、实现事实、流程、工具、决策与过程产物
+001_ProductShot_Camera_Front_Beauty_1920x1080_Cycles.png
+001_ProductShot_Camera_Front_Alpha_1920x1080.png
+001_ProductShot_Camera_Front_ObjectID_1920x1080_Object.png
+001_ProductShot_RenderInfo.json
+001_ProductShot_ObjectID.json
 ```
 
-Beauty、Alpha 与 Object ID 三通道批量渲染已经可用。输出默认位于 `.blend` 同级的 `RenderOutput/<批次>/`。
+## Install
 
-## 安装与使用
+1. **[Download `camera_batch_renderer-0.1.0.zip`](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.1.0.zip)**.
+2. In Blender, open **Edit → Preferences → Get Extensions**.
+3. Open the top-right menu and choose **Install from Disk**.
+4. Select the downloaded ZIP. Do not extract it first.
 
-1. 在 Blender 4.5 LTS 或 5.2 LTS 中打开 `Edit → Preferences → Get Extensions`。
-2. 通过右上角菜单选择 `Install from Disk`，安装 `dist/camera_batch_renderer-0.1.0.zip`。
-3. 保存 `.blend`，在 `3D Viewport → N → Batch Render` 中选择批次前缀与可选通道；
-   原来的 `Output Properties → Render All Cameras` 入口也会保留。
-4. 点击 `Render All Cameras`；可在运行期间点击 `Cancel Batch` 协作式停止。
+## Quick start
 
-可直接打开 `examples/RenderAllCameras_Demo.blend` 体验完整流程。该场景包含两台摄影机，
-默认一次生成 2 张 Beauty、2 张 Alpha、2 张 Object ID，以及对应的 RenderInfo/ObjectID 清单。
+1. Save the `.blend` file—the output location is based on it.
+2. Put the mouse over the 3D Viewport and press <kbd>N</kbd>.
+3. Open **Batch Render → Render All Cameras**.
+4. Choose the starting batch number and enable Alpha and/or Object ID if needed.
+5. Click **Render All Cameras**.
 
-开发验证：
+The same controls are also available under **Output Properties → Render All Cameras**. Results are
+written next to the `.blend` file:
+
+```text
+MyProject/
+├─ ProductShot.blend
+└─ RenderOutput/
+   └─ 001/
+      ├─ ...Beauty....png
+      ├─ ...Alpha....png
+      ├─ ...ObjectID....png
+      ├─ ...RenderInfo.json
+      └─ ...ObjectID.json
+```
+
+中文快速使用：下载上方 ZIP，不要解压；在 Blender 中选择“从磁盘安装”，保存 `.blend` 后，
+将鼠标放到 3D 视图并按 <kbd>N</kbd>，进入 **Batch Render** 标签即可开始批量渲染。
+
+## Demo
+
+Open [`examples/RenderAllCameras_Demo.blend`](examples/RenderAllCameras_Demo.blend) to try a small
+two-camera acceptance scene. A complete run produces two Beauty images, two Alpha images, two
+Object ID images, `RenderInfo.json`, and `ObjectID.json`.
+
+## Compatibility
+
+| Environment | Status |
+| --- | --- |
+| Blender 4.5 LTS | Tested |
+| Blender 5.2 LTS | Tested |
+| Blender 4.4 and earlier | Not supported |
+| Cycles, EEVEE, Workbench | Beauty and auxiliary channels supported |
+| Third-party render engines | Beauty only by default |
+
+Object ID does not currently include Volume objects. Animation, Material ID, Cryptomatte,
+Multiview, multi-Scene queues, and distributed rendering are outside the first release.
+
+## Development and tests
 
 ```powershell
 python -m unittest discover -s tests/unit -v
 python -m unittest discover -s tests/architecture -v
+uvx ruff check camera_batch_renderer tests scripts
 blender --background --factory-startup --python scripts/run_blender_tests.py
 powershell -ExecutionPolicy Bypass -File scripts/build_extension.ps1
 ```
+
+The test suite covers naming, natural camera order, atomic batch allocation and manifests, state
+restoration, cancellation, handled failures, Alpha/Object ID pixels, Blender 4.5/5.2 integration,
+installed-package rendering, and UI registration.
+
+Architecture and implementation documentation lives in [`Docs/`](Docs/README.md). The original
+product scope is recorded in [`PLAN.md`](PLAN.md).
+
+## License
+
+Copyright © 2026 Seker800. Released under
+[`GPL-3.0-or-later`](LICENSE), consistent with the Extension manifest.
+
+<!-- Search terms: Blender addon, Blender extension, batch render all cameras, multi-camera render,
+still image renderer, alpha mask, object ID map, render automation, Python bpy. -->
