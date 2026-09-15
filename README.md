@@ -10,6 +10,7 @@
 camera_batch_renderer/  # 可安装的 Blender 插件包
 tests/                  # 不依赖 Blender 的单元测试与 Blender 集成测试入口
 scripts/                # 开发、验证和打包脚本
+examples/               # 可直接打开的双摄影机验收场景
 Docs/                   # 架构、实现事实、流程、工具、决策与过程产物
 ```
 
@@ -21,6 +22,9 @@ Beauty、Alpha 与 Object ID 三通道批量渲染已经可用。输出默认位
 2. 通过右上角菜单选择 `Install from Disk`，安装 `dist/camera_batch_renderer-0.1.0.zip`。
 3. 保存 `.blend`，在 `Output Properties → Render All Cameras` 中选择批次前缀与可选通道。
 4. 点击 `Render All Cameras`；可在运行期间点击 `Cancel Batch` 协作式停止。
+
+可直接打开 `examples/RenderAllCameras_Demo.blend` 体验完整流程。该场景包含两台摄影机，
+默认一次生成 2 张 Beauty、2 张 Alpha、2 张 Object ID，以及对应的 RenderInfo/ObjectID 清单。
 
 开发验证：
 

@@ -48,6 +48,8 @@ def save_render_alpha(output_path: Path, source: bpy.types.Image) -> None:
     width, height = source.size[:]
     pixels = np.asarray(source.pixels[:], dtype=np.float32).reshape((height, width, 4))
     alpha = np.rint(np.clip(pixels[:, :, 3], 0.0, 1.0) * 255.0).astype(np.uint8)
+    # Blender exposes image rows bottom-to-top; image files use top-to-bottom scanlines.
+    alpha = np.ascontiguousarray(np.flipud(alpha)[:, :, np.newaxis])
     image_output = oiio.ImageOutput.create(str(output_path))
     if image_output is None:
         raise RuntimeError(f"Cannot create Alpha image: {output_path}")

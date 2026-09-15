@@ -132,8 +132,8 @@
 - M2：`13a36bc`
 - M3：`2b25931`
 - M4：以本文件所在提交为准。
-- 测试：14 个纯 Python 单元测试、1 个架构测试、Blender 4.5.11/5.2.1 后台集成测试、MCP Modal GUI 测试。
+- 测试：14 个纯 Python 单元测试、1 个架构测试、Blender 4.5.11/5.2.1 后台集成测试、5.2.1 安装态演示实渲、MCP Modal GUI 与三通道目视测试。
 - 包：`camera_batch_renderer-0.1.0.zip`
-- SHA-256：`A57D135313E0124C9A7A75CD2D66C29806BE1B3DEC97A2F98953F885E5C9F9D5`
+- SHA-256：`BEA668FA556AE70F0192B3B2EEDAE6DF786674061725C620B97217779659992B`
 - 已知限制：第三方引擎只默认保证 Beauty；Volume 不进入 Object ID；第一版不支持 Multiview、动画和多 Scene。
 - 未验证项：无计划内发布门禁遗留。

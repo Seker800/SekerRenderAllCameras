@@ -1,6 +1,8 @@
 * text=auto eol=lf
 
 *.blend filter=lfs diff=lfs merge=lfs -text
+# Keep the tiny acceptance fixture self-contained; production .blend files remain in LFS.
+examples/RenderAllCameras_Demo.blend -filter -diff -merge -text
 *.exr filter=lfs diff=lfs merge=lfs -text
 *.hdr filter=lfs diff=lfs merge=lfs -text
 *.tif filter=lfs diff=lfs merge=lfs -text

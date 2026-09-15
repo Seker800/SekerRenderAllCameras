@@ -8,7 +8,12 @@ from ..domain import Channel, ConflictPolicy, RenderPlan, RenderSettings
 from ..domain.naming import camera_specs, format_batch
 
 SUPPORTED_FORMATS = {"PNG", "JPEG", "TIFF", "OPEN_EXR", "OPEN_EXR_MULTILAYER"}
-AUXILIARY_ENGINES = {"BLENDER_EEVEE_NEXT", "CYCLES", "BLENDER_WORKBENCH"}
+AUXILIARY_ENGINES = {
+    "BLENDER_EEVEE",
+    "BLENDER_EEVEE_NEXT",
+    "CYCLES",
+    "BLENDER_WORKBENCH",
+}
 
 
 def camera_key(camera: bpy.types.Object) -> str:
@@ -56,6 +61,7 @@ def build_render_plan(
     blend_path = Path(bpy.data.filepath)
     engine = scene.render.engine
     engine_label = {
+        "BLENDER_EEVEE": "EEVEE",
         "BLENDER_EEVEE_NEXT": "EEVEE",
         "CYCLES": "Cycles",
         "BLENDER_WORKBENCH": "Workbench",
