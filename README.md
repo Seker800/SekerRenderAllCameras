@@ -6,14 +6,14 @@ automatic filenames, optional alpha masks, Object ID maps, and JSON manifests.
 一键逐个渲染 Blender 当前场景中的全部摄影机，并自动输出规范命名的静帧、Alpha、Object ID
 和 JSON 清单。
 
-[![Download Blender Extension](https://img.shields.io/badge/Download-Extension_4.2+-F5792A?style=for-the-badge&logo=blender&logoColor=white)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.2.0.zip)
-[![Download Legacy Add-on](https://img.shields.io/badge/Download-Legacy_4.0.2%E2%80%934.1-555555?style=for-the-badge&logo=blender&logoColor=white)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.2.0-legacy.zip)
+[![Download Blender Extension](https://img.shields.io/badge/Download-Extension_4.2+-F5792A?style=for-the-badge&logo=blender&logoColor=white)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.2.1.zip)
+[![Download Legacy Add-on](https://img.shields.io/badge/Download-Legacy_4.0.2%E2%80%934.1-555555?style=for-the-badge&logo=blender&logoColor=white)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.2.1-legacy.zip)
 
 [![Latest release](https://img.shields.io/github/v/release/Seker800/SekerRenderAllCameras)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest)
 [![Blender 4.0.2+](https://img.shields.io/badge/Blender-4.0.2%2B-F5792A?logo=blender&logoColor=white)](#compatibility)
 [![License: GPL v3+](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](LICENSE)
 
-> Blender 4.2 or newer: **[download the Extension ZIP](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.2.0.zip)**. Blender 4.0.2–4.1: **[download the Legacy Add-on ZIP](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.2.0-legacy.zip)**. Do not unzip either package.
+> Blender 4.2 or newer: **[download the Extension ZIP](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.2.1.zip)**. Blender 4.0.2–4.1: **[download the Legacy Add-on ZIP](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.2.1-legacy.zip)**. Do not unzip either package.
 
 ## Why use it?
 
@@ -39,14 +39,14 @@ Example filenames:
 
 ### Blender 4.2 or newer
 
-1. **[Download `camera_batch_renderer-0.2.0.zip`](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.2.0.zip)**.
+1. **[Download `camera_batch_renderer-0.2.1.zip`](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.2.1.zip)**.
 2. In Blender, open **Edit → Preferences → Get Extensions**.
 3. Open the top-right menu and choose **Install from Disk**.
 4. Select the downloaded ZIP. Do not extract it first.
 
 ### Blender 4.0.2–4.1
 
-1. **[Download `camera_batch_renderer-0.2.0-legacy.zip`](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.2.0-legacy.zip)**.
+1. **[Download `camera_batch_renderer-0.2.1-legacy.zip`](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.2.1-legacy.zip)**.
 2. In Blender, open **Edit → Preferences → Add-ons**.
 3. Click **Install…**, choose the downloaded ZIP, then enable **Render: Render All Cameras**.
 
