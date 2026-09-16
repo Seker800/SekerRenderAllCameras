@@ -42,5 +42,11 @@ $legacyBuilder = Join-Path $PSScriptRoot "build_legacy_package.py"
 & $Python $legacyBuilder $sourcePath $legacyOutput
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+# Release gate: both package formats must contain byte-identical functional files,
+# and every release-facing version/link surface must match this build.
+$releaseGate = Join-Path $PSScriptRoot "release_gate.py"
+& $Python $releaseGate --root $repoRoot
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 Write-Output "Extension: $(Join-Path $outputPath "camera_batch_renderer-$version.zip")"
 Write-Output "Legacy add-on: $legacyOutput"

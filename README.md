@@ -7,22 +7,22 @@ Material ID maps, and JSON manifests.
 一键逐个渲染 Blender 当前场景中的全部摄影机，并自动输出规范命名的静帧、Alpha、Object ID、
 Material ID 和 JSON 清单。
 
-[![Download Blender Extension](https://img.shields.io/badge/Download-Extension_4.2+-F5792A?style=for-the-badge&logo=blender&logoColor=white)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.2.1.zip)
-[![Download Legacy Add-on](https://img.shields.io/badge/Download-Legacy_4.0.2%E2%80%934.1-555555?style=for-the-badge&logo=blender&logoColor=white)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.2.1-legacy.zip)
+[![Download Blender Extension](https://img.shields.io/badge/Download-Extension_4.2+-F5792A?style=for-the-badge&logo=blender&logoColor=white)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.5.1.zip)
+[![Download Legacy Add-on](https://img.shields.io/badge/Download-Legacy_4.0.2%E2%80%934.1-555555?style=for-the-badge&logo=blender&logoColor=white)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.5.1-legacy.zip)
 
 [![Latest release](https://img.shields.io/github/v/release/Seker800/SekerRenderAllCameras)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest)
-[![Current source](https://img.shields.io/badge/Current_source-0.5.0-2ea44f)](#whats-new-in-050-current-source)
+[![Current source](https://img.shields.io/badge/Current_source-0.5.1-2ea44f)](#whats-new-in-051-current-source)
 [![Blender 4.0.2+](https://img.shields.io/badge/Blender-4.0.2%2B-F5792A?logo=blender&logoColor=white)](#compatibility)
 [![License: GPL v3+](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](LICENSE)
 
-> Blender 4.2 or newer: **[download the Extension ZIP](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.2.1.zip)**. Blender 4.0.2–4.1: **[download the Legacy Add-on ZIP](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.2.1-legacy.zip)**. Do not unzip either package.
+> Blender 4.2 or newer: **[download the Extension ZIP](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.5.1.zip)**. Blender 4.0.2–4.1: **[download the Legacy Add-on ZIP](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.5.1-legacy.zip)**. Do not unzip either package.
 >
-> The repository source is currently **0.5.0**. The buttons above intentionally keep pointing to
-> the latest published **0.2.1** release artifacts until a newer GitHub Release is published.
+> The repository source is currently **0.5.1**. A release is complete only after both links above
+> resolve to the matching Extension and Legacy assets in the latest GitHub Release.
 
 ## Plugin at a glance
 
-[![Render All Cameras 0.5.0 plugin panel with Material ID and camera environments](Docs/images/plugin-quick-start.jpg)](Docs/images/plugin-quick-start.jpg)
+[![Render All Cameras 0.5.1 plugin panel with visible version, Material ID, and camera environments](Docs/images/plugin-quick-start.jpg)](Docs/images/plugin-quick-start.jpg)
 
 Save the `.blend`, press <kbd>N</kbd> in the 3D Viewport, open **Batch Render**, choose the optional
 Alpha/Object ID/Material ID outputs, and click **Render All Cameras**. The plugin renders every usable camera to
@@ -31,7 +31,16 @@ the fixed `SekerRenderAllCameras/` folder next to the saved `.blend`.
 中文：保存 `.blend`，在 3D 视图按 <kbd>N</kbd>，打开 **Batch Render**；按需勾选 Alpha / Object ID / Material ID，
 然后点击 **Render All Cameras**。上图只保留插件面板，点击可查看原始尺寸。
 
-## What's new in 0.5.0 (current source)
+## What's new in 0.5.1 (current source)
+
+- Show the running add-on version directly in both Blender panels, making a stale in-memory add-on
+  immediately visible after an update.
+- Add a release gate that requires byte-identical functional files in the Extension and Legacy ZIPs
+  and rejects stale versions or download links.
+
+中文：0.5.1 在插件面板中直接显示当前运行版本，并新增双包与发布门禁，防止 Blender 仍加载旧版、两种安装包功能不一致或首页继续下载旧包。
+
+### Material ID included since 0.5.0
 
 - Add an optional Material ID PNG for every camera. Each Blender Material receives a deterministic,
   non-black flat color; different material slots on the same mesh remain distinct.
@@ -100,14 +109,14 @@ ProductShot_MaterialID.json
 
 ### Blender 4.2 or newer
 
-1. **[Download `camera_batch_renderer-0.2.1.zip`](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.2.1.zip)**.
+1. **[Download `camera_batch_renderer-0.5.1.zip`](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.5.1.zip)**.
 2. In Blender, open **Edit → Preferences → Get Extensions**.
 3. Open the top-right menu and choose **Install from Disk**.
 4. Select the downloaded ZIP. Do not extract it first.
 
 ### Blender 4.0.2–4.1
 
-1. **[Download `camera_batch_renderer-0.2.1-legacy.zip`](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.2.1-legacy.zip)**.
+1. **[Download `camera_batch_renderer-0.5.1-legacy.zip`](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.5.1-legacy.zip)**.
 2. In Blender, open **Edit → Preferences → Add-ons**.
 3. Click **Install…**, choose the downloaded ZIP, then enable **Render: Render All Cameras**.
 

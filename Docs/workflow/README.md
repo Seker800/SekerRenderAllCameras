@@ -6,3 +6,4 @@
 - [`全量测试流程.md`](全量测试流程.md)：纯 Python、Blender 后台、GUI 与状态恢复门禁。
 - [`发布插件.md`](发布插件.md)：版本、ZIP、安装与发布验收。
 - [`Git自主提交.md`](Git自主提交.md)：精确暂存与本地提交边界。
+- [`Commit与Push说明.md`](Commit与Push说明.md)：区分本地提交、普通 push 与必须同步 Release/下载链接的发布型 push。

@@ -19,6 +19,7 @@ from ..infrastructure.storage import (
     mark_incomplete,
     prepare_output_directory,
 )
+from ..version import VERSION_TEXT
 from .render_adapter import BlenderRenderAdapter
 from .scene_reader import build_render_plan, validate_scene
 from .state_transaction import BlenderStateTransaction
@@ -97,7 +98,7 @@ class BlenderBatchSession:
         progress = self.coordinator.snapshot()
         payload = {
             "schema_version": 2,
-            "addon_version": "0.5.0",
+            "addon_version": VERSION_TEXT,
             "blender_version": bpy.app.version_string,
             "status": progress.status.value,
             "blend_file": str(self.coordinator.plan.blend_path),

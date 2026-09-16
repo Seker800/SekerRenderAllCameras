@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import ast
 import re
 import unittest
 from pathlib import Path
+
+from camera_batch_renderer.version import VERSION, VERSION_TEXT
 
 ROOT = Path(__file__).parents[2]
 PACKAGE = ROOT / "camera_batch_renderer"
@@ -13,6 +16,7 @@ class VersionCompatibilityTests(unittest.TestCase):
         entry_point = (PACKAGE / "__init__.py").read_text(encoding="utf-8")
         manifest = (PACKAGE / "blender_manifest.toml").read_text(encoding="utf-8")
         runtime = (PACKAGE / "blender" / "runtime.py").read_text(encoding="utf-8")
+        panel = (PACKAGE / "presentation" / "panel.py").read_text(encoding="utf-8")
         project = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
 
         manifest_version = re.search(r'^version = "([^"]+)"$', manifest, re.MULTILINE)
@@ -20,10 +24,27 @@ class VersionCompatibilityTests(unittest.TestCase):
         self.assertIsNotNone(manifest_version)
         self.assertIsNotNone(project_version)
         version = manifest_version.group(1)
-        version_tuple = tuple(int(part) for part in version.split("."))
         self.assertEqual(project_version.group(1), version)
-        self.assertIn(f'"version": {version_tuple}', entry_point)
-        self.assertIn(f'"addon_version": "{version}"', runtime)
+        self.assertEqual(version, VERSION_TEXT)
+        self.assertEqual(tuple(int(part) for part in version.split(".")), VERSION)
+        self.assertIn(f'"version": {VERSION}', entry_point)
+        self.assertIn('"addon_version": VERSION_TEXT', runtime)
+        self.assertIn('text=f"Version {VERSION_TEXT}"', panel)
+
+    def test_legacy_bl_info_is_literal_for_blender_discovery(self) -> None:
+        entry_point = (PACKAGE / "__init__.py").read_text(encoding="utf-8")
+        tree = ast.parse(entry_point)
+        assignment = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.Assign)
+            and any(
+                isinstance(target, ast.Name) and target.id == "bl_info"
+                for target in node.targets
+            )
+        )
+        info = ast.literal_eval(assignment.value)
+        self.assertEqual(info["version"], VERSION)
 
     def test_package_contract_covers_blender_4_0_2_and_later(self) -> None:
         entry_point = (PACKAGE / "__init__.py").read_text(encoding="utf-8")

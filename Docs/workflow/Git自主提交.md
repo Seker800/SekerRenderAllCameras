@@ -7,3 +7,5 @@
 - 运行风险匹配的测试和 diff check，创建提交前阅读 `../Commit规范.md`。
 - hook 失败时修复根因，禁止 `--no-verify`；默认不 push、不 amend、不做破坏性 reset。
 - 收尾报告提交 hash、标题与验证；无法安全提交时说明具体原因并保留改动。
+
+用户明确要求 push 时必须继续执行 [`Commit与Push说明.md`](Commit与Push说明.md)。运行时代码、版本、UI、输出或兼容性变化属于发布型 push，只有 GitHub Release、双包资产和线上下载链接全部验证后才算完成。

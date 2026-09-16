@@ -3,6 +3,7 @@ from __future__ import annotations
 import bpy
 
 from ..domain.naming import OUTPUT_DIRECTORY_NAME
+from ..version import VERSION_TEXT
 from . import runtime_state
 
 
@@ -72,6 +73,7 @@ def draw_controls(layout: bpy.types.UILayout, context: bpy.types.Context) -> Non
         else:
             layout.operator("render.cancel_all_cameras", icon="CANCEL")
     layout.label(text=f"Output: //{OUTPUT_DIRECTORY_NAME}/", icon="FILE_FOLDER")
+    layout.label(text=f"Version {VERSION_TEXT}", icon="INFO")
 
 
 class RAC_PT_panel(bpy.types.Panel):
