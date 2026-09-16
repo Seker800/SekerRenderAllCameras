@@ -4,6 +4,7 @@
 
 ## 当前执行
 
+- `ACTIVE`：[`ACTIVE-分版本Blender适配与发布矩阵.md`](ACTIVE-分版本Blender适配与发布矩阵.md) — 共享纯核心，按 4.0.2、4.1.1、4.2.0、4.5 LTS、5.2 LTS 分别装配宿主实现、测试和发布。
 - `COMPLETED`：[`COMPLETED-双包与发布门禁.md`](COMPLETED-双包与发布门禁.md) — 自动比较 Extension/Legacy 功能内容，并把运行时 push 与版本、Release、下载链接闭环绑定。
 - `COMPLETED`：[`COMPLETED-面板显示版本号.md`](COMPLETED-面板显示版本号.md) — 在两个插件面板中直接显示当前运行版本，区分旧内存实例与新安装包。
 - `COMPLETED`：[`COMPLETED-Material-ID通道.md`](COMPLETED-Material-ID通道.md) — 新增稳定材质颜色、Material ID PNG 与材质映射 JSON，并完成真实 Blender 验收。
