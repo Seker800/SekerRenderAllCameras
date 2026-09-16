@@ -32,7 +32,7 @@ Commit 本身不代表 GitHub Release 已发布，也不代表首页下载链接
 5. README 顶部按钮、正文安装链接和文件名全部指向本次版本，禁止残留旧版本下载 URL。
 6. 创建符合规范的 commit 并 push 主分支；创建同版本 Git tag/GitHub Release，上传五个 ZIP 和校验值。
 7. 运行 `python scripts/release_gate.py --verify-online`，要求最新版 Release 的五个资产都可下载，且线上内容 SHA-256 与本地已测试 ZIP 完全一致。
-8. 重新读取 GitHub 线上 README 与 Release，核对版本、资产名和下载链接；只有此时才能向用户报告“已更新并可下载”。
+8. 重新读取 GitHub 线上 README 与 Release，核对顶部版本、五个资产名和下载链接、普通用户安装步骤、兼容矩阵、测试统计及截图中显示的版本；只有此时才能向用户报告“已更新并可下载”。
 
 如果 GitHub Release、资产上传或在线链接验证失败，任务状态必须明确为“源码已 push、发布未完成”，不得用 commit hash 代替发布完成证明。
 

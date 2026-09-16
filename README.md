@@ -1,5 +1,30 @@
 # Render All Cameras for Blender
 
+## ⬇️ Download / 下载插件
+
+### 第 1 步：确认自己的 Blender 版本
+
+打开 Blender，在顶部菜单选择 **帮助（Help）→ 关于 Blender（About Blender）**，记下版本号。
+
+### 第 2 步：点击对应版本下载
+
+| 你的 Blender 版本 | 点击这里下载插件 |
+|---|---|
+| **4.0.2–4.0.x** | **[⬇️ 下载 Blender 4.0 插件](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.6.0-blender-4.0.2.zip)** |
+| **4.1.1–4.1.x** | **[⬇️ 下载 Blender 4.1 插件](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.6.0-blender-4.1.1.zip)** |
+| **4.2.x** | **[⬇️ 下载 Blender 4.2 插件](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.6.0-blender-4.2.0.zip)** |
+| **4.5.x LTS** | **[⬇️ 下载 Blender 4.5 LTS 插件](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.6.0-blender-4.5-lts.zip)** |
+| **5.2.x LTS** | **[⬇️ 下载 Blender 5.2 LTS 插件](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.6.0-blender-5.2-lts.zip)** |
+
+> 下载得到 `.zip` 文件后，**不要解压**。也不要下载页面底部 GitHub 自动提供的 `Source code (zip)`，它不是可安装的插件。
+
+### 第 3 步：在 Blender 中安装
+
+- **Blender 4.0 / 4.1：**打开 **编辑 → 偏好设置 → 插件 → 安装**，选择刚下载的 ZIP，然后勾选启用 **Render All Cameras**。
+- **Blender 4.2 / 4.5 / 5.2：**打开 **编辑 → 偏好设置 → 获取扩展**，点击右上角菜单，选择 **从磁盘安装**，然后选择刚下载的 ZIP。
+
+如果表格里没有你的 Blender 版本，表示该版本目前没有经过完整测试，请不要随便选择其他版本的包。全部文件也可以在 **[v0.6.0 发布页面](https://github.com/Seker800/SekerRenderAllCameras/releases/tag/v0.6.0)** 查看。
+
 **One-click batch rendering for every camera in a Blender scene.** Render still images with
 automatic filenames, per-camera light/World environments, optional alpha masks, Object ID maps,
 Material ID maps, and JSON manifests.
@@ -7,15 +32,9 @@ Material ID maps, and JSON manifests.
 一键逐个渲染 Blender 当前场景中的全部摄影机，并自动输出规范命名的静帧、Alpha、Object ID、
 Material ID 和 JSON 清单。
 
-[![Download Blender 4.0.2](https://img.shields.io/badge/Download-Blender_4.0.2-555555?style=for-the-badge&logo=blender&logoColor=white)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.6.0-blender-4.0.2.zip)
-[![Download Blender 4.1.1](https://img.shields.io/badge/Download-Blender_4.1.1-555555?style=for-the-badge&logo=blender&logoColor=white)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.6.0-blender-4.1.1.zip)
-[![Download Blender 4.2.0](https://img.shields.io/badge/Download-Blender_4.2.0-F5792A?style=for-the-badge&logo=blender&logoColor=white)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.6.0-blender-4.2.0.zip)
-[![Download Blender 4.5 LTS](https://img.shields.io/badge/Download-Blender_4.5_LTS-F5792A?style=for-the-badge&logo=blender&logoColor=white)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.6.0-blender-4.5-lts.zip)
-[![Download Blender 5.2 LTS](https://img.shields.io/badge/Download-Blender_5.2_LTS-F5792A?style=for-the-badge&logo=blender&logoColor=white)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.6.0-blender-5.2-lts.zip)
-
 [![Latest release](https://img.shields.io/github/v/release/Seker800/SekerRenderAllCameras)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest)
 [![Current source](https://img.shields.io/badge/Current_source-0.6.0-2ea44f)](#whats-new-in-060-current-source)
-[![Blender 4.0.2+](https://img.shields.io/badge/Blender-4.0.2%2B-F5792A?logo=blender&logoColor=white)](#compatibility)
+[![Five tested Blender lines](https://img.shields.io/badge/Blender-5_separate_tested_packages-F5792A?logo=blender&logoColor=white)](#compatibility)
 [![License: GPL v3+](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](LICENSE)
 
 > Download the package whose name exactly matches Blender 4.0.2, 4.1.1, 4.2.0, 4.5 LTS, or
@@ -26,7 +45,7 @@ Material ID 和 JSON 清单。
 
 ## Plugin at a glance
 
-[![Render All Cameras 0.5.1 plugin panel with visible version, Material ID, and camera environments](Docs/images/plugin-quick-start.jpg)](Docs/images/plugin-quick-start.jpg)
+[![Render All Cameras 0.6.0 plugin panel with Material ID and camera environments](Docs/images/plugin-quick-start.jpg)](Docs/images/plugin-quick-start.jpg)
 
 Save the `.blend`, press <kbd>N</kbd> in the 3D Viewport, open **Batch Render**, choose the optional
 Alpha/Object ID/Material ID outputs, and click **Render All Cameras**. The plugin renders every usable camera to
@@ -71,18 +90,16 @@ the fixed `SekerRenderAllCameras/` folder next to the saved `.blend`.
 
 中文：选中不同配对行会立即切换摄影机、灯组和 World。灯光 Collection 即使事先被隐藏或从 View Layer 排除，渲染时也会自动启用，完成、取消或失败后恢复任务开始时的状态。
 
-### Verified in Blender
+### Verified in five Blender versions
 
-The Material ID workflow was exercised in Blender 5.2.1 with a multi-material mesh and an
-unassigned-material object. The exported PNG contained only the black background and the three
-exact colors declared in `MaterialID.json`; original material slots, face assignments, and material
-colors remained unchanged. The environment workflow was also exercised with two cameras, two initially
-hidden and View Layer-excluded light Collections, and two different Worlds. The real EEVEE run
-produced two distinct PNGs, recorded each Camera/Collection/World combination in `RenderInfo.json`,
-and restored the original camera, World, Collection, View Layer, and light visibility afterward.
-The GUI regression run also completed a three-camera queue without stopping after the first image.
+Release 0.6.0 passed the complete 63-step release suite in Blender **4.0.2, 4.1.1, 4.2.0,
+4.5.13 LTS, and 5.2.1 LTS**, with zero failures and zero skipped release checks. Every version ran
+real background and GUI renders, all four output channels, edge cases, a 50-camera batch, ten
+repeated batches, wrong-package rejection, clean installation, installed-package rendering, and
+removal. The five installed packages also produced matching functional contracts.
 
-中文：上述配对并非只做了代码测试；项目已在 Blender 5.2.1 中实际创建场景、连续渲染并检查导出图片、RenderInfo 与渲染后的状态恢复。
+中文：0.6.0 已分别在 Blender **4.0.2、4.1.1、4.2.0、4.5.13 LTS、5.2.1 LTS** 中完成真实测试；
+共 63 项通过、0 项失败、0 项未运行。不是只测试代码导入，而是实际安装插件、从界面和后台渲染、检查输出，再执行禁用和卸载。
 
 ## Why use it?
 
@@ -113,14 +130,14 @@ ProductShot_MaterialID.json
 
 ### Blender 4.2.0, 4.5 LTS, or 5.2 LTS
 
-1. Download the matching Extension ZIP from the five buttons at the top of this page.
+1. Download the matching ZIP from the download table at the top of this page.
 2. In Blender, open **Edit → Preferences → Get Extensions**.
 3. Open the top-right menu and choose **Install from Disk**.
 4. Select the downloaded ZIP. Do not extract it first.
 
 ### Blender 4.0.2 or 4.1.1
 
-1. Download the matching Legacy ZIP from the five buttons at the top of this page.
+1. Download the matching ZIP from the download table at the top of this page.
 2. In Blender, open **Edit → Preferences → Add-ons**.
 3. Click **Install…**, choose the downloaded ZIP, then enable **Render: Render All Cameras**.
 
@@ -199,10 +216,11 @@ blender --background --factory-startup --python scripts/run_material_id_acceptan
 powershell -ExecutionPolicy Bypass -File scripts/build_extension.ps1
 ```
 
-The test suite covers naming, natural camera order, per-camera light/World switching, fixed-folder
-preservation and manifests, state restoration, cancellation, handled failures, Alpha/Object ID
-and Material ID pixels, Blender 4.0.2/4.1/4.2/4.5/5.2 integration, both package formats,
-installed-package rendering, and UI registration.
+The release suite covers naming, natural camera order, per-camera light/World switching,
+fixed-folder preservation and manifests, state restoration, cancellation, handled failures,
+Alpha/Object ID/Material ID pixels, GUI operation, 50-camera and repeated-batch smoke tests,
+wrong-version rejection, isolated installed-package rendering, removal, and cross-version
+functional-contract comparison across Blender 4.0.2/4.1.1/4.2.0/4.5.13/5.2.1.
 
 Architecture and implementation documentation lives in [`Docs/`](Docs/README.md). The original
 product scope is recorded in [`PLAN.md`](PLAN.md).
