@@ -12,6 +12,7 @@ class JobStep(StrEnum):
     BEAUTY = "beauty"
     ALPHA = "alpha"
     OBJECT_ID = "object_id"
+    MATERIAL_ID = "material_id"
     ADVANCING = "advancing"
     RESTORING = "restoring"
     FINISHED = "finished"

@@ -98,6 +98,7 @@ class RAC_OT_render_all(bpy.types.Operator):
                 context.scene,
                 include_alpha=settings.include_alpha,
                 include_object_id=settings.include_object_id,
+                include_material_id=settings.include_material_id,
                 environment_pairs=tuple(
                     (item.camera, item.light_collection, item.world)
                     for item in settings.environment_pairs

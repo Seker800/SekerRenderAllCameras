@@ -30,6 +30,42 @@ def make_plan() -> RenderPlan:
 
 
 class CoordinatorTests(TestCase):
+    def test_preserves_camera_then_channel_order_for_material_id(self) -> None:
+        base = make_plan()
+        plan = RenderPlan(
+            blend_path=base.blend_path,
+            blend_name=base.blend_name,
+            output_directory=base.output_directory,
+            scene_name=base.scene_name,
+            view_layer_name=base.view_layer_name,
+            frame=base.frame,
+            cameras=base.cameras,
+            channels=(Channel.BEAUTY, Channel.OBJECT_ID, Channel.MATERIAL_ID),
+            settings=base.settings,
+        )
+        outputs = {
+            (camera.key, channel): Path(f"{camera.key}-{channel.value}.png")
+            for camera in plan.cameras
+            for channel in plan.channels
+        }
+        coordinator = BatchCoordinator(plan, outputs)
+        actions = []
+        action = coordinator.start()
+        while action is not None:
+            actions.append((action.camera_key, action.channel))
+            action = coordinator.complete_current(ResultStatus.SUCCEEDED)
+        self.assertEqual(
+            actions,
+            [
+                ("a", Channel.BEAUTY),
+                ("a", Channel.OBJECT_ID),
+                ("a", Channel.MATERIAL_ID),
+                ("b", Channel.BEAUTY),
+                ("b", Channel.OBJECT_ID),
+                ("b", Channel.MATERIAL_ID),
+            ],
+        )
+
     def test_advances_and_completes(self) -> None:
         plan = make_plan()
         outputs = {

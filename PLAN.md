@@ -1,6 +1,6 @@
 # Blender 全摄影机静帧批量渲染插件开发计划
 
-> 文档状态：实施基线（Revision 4）
+> 文档状态：实施基线（Revision 5）
 >
 > 最低目标版本：Blender 4.0.2
 >
@@ -15,6 +15,7 @@
 - Beauty 主图，必选；
 - Alpha 黑白贴图，可选；
 - Object ID 彩色贴图，可选。
+- Material ID 彩色贴图，可选。
 
 插件只处理启动任务时的当前静帧，不提供动画、帧范围或视频渲染。
 
@@ -28,10 +29,11 @@
 6. 如果原场景没有开启透明背景，Alpha 需要一次独立辅助渲染，不能承诺零成本生成。
 7. Object ID 定义为“可见表面对象的离散彩色标签图”，默认关闭抗锯齿，确保像素颜色能够精确映射到 JSON。
 8. Alpha 和 Object ID 使用隔离的临时辅助 Scene，不修改原对象颜色、材质或 Pass Index。
-9. 固定目录名和文件命名以 Domain Naming 为唯一事实来源，不依赖 `.blend` 内属性持久化。
-10. Blender 数据访问和任务调度全部在主线程执行，不使用 Python 后台线程操作 `bpy`。
-11. 每完成一个关键步骤就原子更新任务清单，异常退出后仍可追踪已生成文件。
-12. 插件不主动保存 `.blend` 文件；完成或失败后不留下临时 Scene、对象、图像、节点或材质。
+9. Material ID 使用隔离的临时 Workbench Scene，按材质数据块分配稳定颜色并保留逐面材质索引；未分配材质使用非黑色 `Unassigned` 标签。
+10. 固定目录名和文件命名以 Domain Naming 为唯一事实来源，不依赖 `.blend` 内属性持久化。
+11. Blender 数据访问和任务调度全部在主线程执行，不使用 Python 后台线程操作 `bpy`。
+12. 每完成一个关键步骤就原子更新任务清单，异常退出后仍可追踪已生成文件。
+13. 插件不主动保存 `.blend` 文件；完成或失败后不留下临时 Scene、对象、图像、节点或材质。
 
 ## 3. 第一版范围
 
@@ -42,6 +44,7 @@
 - 逐台摄影机生成 Beauty。
 - 可选 Alpha。
 - 可选精确 Object ID PNG。
+- 可选精确 Material ID PNG 与材质颜色映射 JSON。
 - 自动创建输出目录。
 - 文件名清理、重名处理和成功后原子覆盖。
 - 任务进度、当前摄影机、成功/失败/跳过计数。
@@ -58,7 +61,6 @@
 - 同时处理多个 Scene。
 - 网络或分布式渲染。
 - 摄影机专属分辨率/采样预设。
-- Material ID。
 - Cryptomatte EXR 输出；架构会预留后端接口，后续版本可增加。
 - Stereo/Multiview；第一版预检时明确拒绝。
 - 第三方渲染引擎的无条件兼容承诺。
@@ -71,6 +73,7 @@
 
 - `输出 Alpha`：默认关闭。
 - `输出 Object ID`：默认关闭。
+- `输出 Material ID`：默认关闭。
 - `输出目录`：只读显示 `//SekerRenderAllCameras/`。
 - `摄影机数量`与`预计文件数量`。
 - `Camera Environments`：可添加/删除 Camera + Light Collection + World 配对；Light/World 均可留空以继承 Scene 默认。
@@ -88,6 +91,7 @@
 
 - 原场景未开启 Film Transparent 时，勾选 Alpha 会为每台摄影机增加一次辅助渲染。
 - Object ID 是离散标签图，边缘默认不做抗锯齿。
+- Material ID 是按材质数据块生成的离散标签图；没有材质的表面使用 `Unassigned`。
 - Volume 暂不纳入 Object ID。
 - 未保存 `.blend` 时必须先保存。
 
@@ -149,8 +153,10 @@ scene.objects 中所有 type == 'CAMERA' 且 data 有效的对象
 客厅方案_Camera_Front_Beauty_3840x2160_Cycles_S256.png
 客厅方案_Camera_Front_Alpha_3840x2160.png
 客厅方案_Camera_Front_ObjectID_3840x2160_Object.png
+客厅方案_Camera_Front_MaterialID_3840x2160_Material.png
 客厅方案_RenderInfo.json
 客厅方案_ObjectID.json
+客厅方案_MaterialID.json
 ```
 
 ### 7.1 Beauty 关键参数
@@ -161,10 +167,11 @@ scene.objects 中所有 type == 'CAMERA' 且 data 有效的对象
 
 文件名中的参数只用于人工识别，不代表完整可复现配置。完整配置以 `RenderInfo.json` 为准。
 
-### 7.2 Alpha 与 Object ID 参数
+### 7.2 Alpha、Object ID 与 Material ID 参数
 
 - Alpha：实际分辨率。
 - Object ID：实际分辨率及固定类型 `Object`。
+- Material ID：实际分辨率及固定类型 `Material`。
 
 当前帧不默认进入文件名；帧号必须写入清单。在同一 `.blend` 中改变帧后重新渲染会覆盖同名通道文件。
 
@@ -312,6 +319,16 @@ Alpha 是排除 World 背景后的原始 Render Layer 透明度：
 
 架构预留 `CRYPTOMATTE_EXR` 后端。Cryptomatte 是更适合 Blender、Nuke 等后期流程的标准方案，能够表达多对象像素、透明和抗锯齿；它与第一版离散 PNG 的用途不同，不混为同一种输出。
 
+### 10.6 Material ID 输出规范
+
+- 每个 Blender Material 数据块使用一个确定性、非黑色的 8-bit RGB 标签；稳定键由库来源和材质完整名称组成。
+- 同一个 Material 用于不同对象、摄影机或重复任务时保持同色；重命名材质或改变库路径后允许改变。
+- 同一 evaluated Mesh 的不同材质槽和 polygon `material_index` 必须保留，因此不同材质面输出不同标签。
+- 没有材质或空材质槽使用固定语义键 `builtin|<Unassigned>`，获得独立的非黑色颜色；黑色只表示背景。
+- 使用隔离的临时 Workbench Scene、Flat Lighting、Material Color、关闭阴影/高光/抗锯齿和 dithering；不修改用户 Material、节点、材质槽或面分配。
+- 固定输出无损 8-bit RGB PNG，并写入 `{Blend}_MaterialID.json`，记录材质键、显示名、RGB、Hex 和跳过项。
+- Volume 暂不支持并明确写入已知限制。
+
 ## 11. 任务清单与恢复标记
 
 每批输出：
@@ -319,6 +336,7 @@ Alpha 是排除 World 背景后的原始 Render Layer 透明度：
 ```text
 客厅方案_RenderInfo.json
 客厅方案_ObjectID.json    # 仅开启 ID 时
+客厅方案_MaterialID.json  # 仅开启 Material ID 时
 .inprogress                   # 未完成标记
 ```
 
@@ -333,11 +351,12 @@ Alpha 是排除 World 背景后的原始 Render Layer 透明度：
 - 开始、更新时间和结束时间
 - 渲染引擎及实际像素尺寸
 - 输出格式、采样、降噪、Film 和色彩管理摘要
-- 是否启用 Alpha、Object ID
+- 是否启用 Alpha、Object ID、Material ID
 - 摄影机稳定顺序
 - 每台摄影机、每个通道的状态、文件名、耗时和错误
 - 已知限制和被跳过对象
 - Object ID 清单文件名
+- Material ID 清单文件名
 
 ### 11.2 原子写入
 
@@ -368,6 +387,7 @@ IDLE
   → WRITING_BEAUTY
   → ALPHA_PREPARING / ALPHA_RENDERING / WRITING_ALPHA
   → ID_PREPARING / ID_RENDERING / WRITING_ID
+  → MATERIAL_ID_PREPARING / MATERIAL_ID_RENDERING / WRITING_MATERIAL_ID
   → ADVANCING_CAMERA
   → WRITING_MANIFEST
   → RESTORING
@@ -432,6 +452,7 @@ Beauty 原场景需要保存并恢复：
 - 单台摄影机 Beauty 失败：记录失败，不生成其 Alpha，继续下一摄影机。
 - Alpha 失败：保留 Beauty，记录错误，继续 ID 或下一摄影机。
 - ID 失败：保留 Beauty/Alpha，记录错误，继续下一摄影机。
+- Material ID 失败：保留此前成功通道，记录错误，继续下一摄影机。
 - JSON 更新失败：视为任务级严重错误，停止新渲染并清理，因为任务已无法可靠追踪。
 
 ### 14.3 已有文件
@@ -447,6 +468,7 @@ Beauty 原场景需要保存并恢复：
 - 原场景已透明时 Alpha 不重复渲染。
 - 原场景不透明且用户要求 Alpha 时，接受一次额外渲染以保证语义正确。
 - Object ID 使用 Workbench 临时场景，渲染成本低于正常光照渲染，但可能产生较高临时几何内存。
+- Material ID 同样使用 Workbench 临时场景并复制 evaluated Mesh；按摄影机完成后立即释放临时材质和几何。
 - 每台摄影机完成保存后释放不再需要的像素和临时数据。
 - 不同时在内存中长期保留所有摄影机结果。
 - 辅助 Scene 可以在同一台摄影机的 Alpha/ID 完成后释放；是否跨摄影机复用需以不增加状态风险为前提再优化。
@@ -564,6 +586,7 @@ Extension ZIP 必须在 Blender 4.2+ 完成官方验证与安装态测试；同�
 - 参数文件名格式。
 - JSON Schema 版本和状态转换。
 - Object ID 调色板碰撞处理。
+- Material ID 文件命名、调色板确定性和通道动作顺序。
 
 ### 19.2 Blender 集成场景
 
@@ -579,7 +602,7 @@ Extension ZIP 必须在 Blender 4.2+ 完成官方验证与安装态测试；同�
 - Compositor 中存在 File Output 节点。
 - Film Transparent 开启与关闭。
 - 半透明、Holdout、玻璃和透明边缘。
-- 仅 Beauty、Beauty+Alpha、Beauty+ID、三者全部。
+- 仅 Beauty、Beauty+Alpha、Beauty+ID、Beauty+Material ID、四者全部。
 
 ### 19.3 ID 精确性
 
@@ -590,6 +613,8 @@ Extension ZIP 必须在 Blender 4.2+ 完成官方验证与安装态测试；同�
 - 链接对象和实例具有可追踪稳定键。
 - 重命名对象后允许颜色变化并在新清单中正确记录。
 - Volume 被明确跳过而不是静默错误着色。
+- 同一材质在不同对象和摄影机中颜色一致；同一 Mesh 的不同材质面使用不同颜色。
+- 未分配材质使用非黑色 `Unassigned` 标签，Material ID PNG 只包含黑色和 MaterialID JSON 声明颜色。
 
 ### 19.4 恢复与故障注入
 
@@ -620,14 +645,15 @@ Extension ZIP 必须在 Blender 4.2+ 完成官方验证与安装态测试；同�
 5. Beauty 与用户单独执行正常渲染得到的最终 Composite 内容一致。
 6. 原场景透明时 Alpha 不重复渲染；不透明时通过独立渲染得到有意义的背景透明 Alpha。
 7. Object ID 图只包含黑色及 JSON 声明的离散 RGB 颜色。
-8. 同一稳定键在不同摄影机和重复任务中获得同一颜色。
-9. RenderInfo 在中途异常后仍保留上一份有效状态。
-10. 用户停止后已完成文件保留，清单标记为取消，并完成清理。
-11. 正常、取消和可捕获异常后不留下临时 Blender 数据。
-12. 插件不主动保存 `.blend`，不永久修改原对象材质、颜色或 Pass Index。
-13. 只有本轮成功生成的同名输出会覆盖旧文件，其他已有文件不受影响。
-14. Extension ZIP 在 4.2+ 通过官方验证并安装运行，Legacy ZIP 在 4.0.2–4.1 安装运行。
-15. 有配对的 Camera 只使用指定 Light Collection/World，未配对 Camera 使用 Scene 默认，任务结束后原环境完整恢复。
+8. Material ID 图保留逐面材质分配，只包含黑色及 JSON 声明颜色，且不修改用户材质。
+9. 同一稳定键在不同摄影机和重复任务中获得同一颜色。
+10. RenderInfo 在中途异常后仍保留上一份有效状态。
+11. 用户停止后已完成文件保留，清单标记为取消，并完成清理。
+12. 正常、取消和可捕获异常后不留下临时 Blender 数据。
+13. 插件不主动保存 `.blend`，不永久修改原对象材质、颜色或 Pass Index。
+14. 只有本轮成功生成的同名输出会覆盖旧文件，其他已有文件不受影响。
+15. Extension ZIP 在 4.2+ 通过官方验证并安装运行，Legacy ZIP 在 4.0.2–4.1 安装运行。
+16. 有配对的 Camera 只使用指定 Light Collection/World，未配对 Camera 使用 Scene 默认，任务结束后原环境完整恢复。
 
 ## 21. 开发阶段
 
@@ -659,6 +685,7 @@ Extension ZIP 必须在 Blender 4.2+ 完成官方验证与安装态测试；同�
 - 隔离的 Object ID 临时 Scene。
 - 稳定调色板和碰撞处理。
 - Object ID JSON。
+- Material ID 临时 Scene、逐面材质槽重建与 MaterialID JSON。
 
 ### 阶段 3：任务体验与可靠性
 

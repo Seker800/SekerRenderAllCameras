@@ -61,6 +61,7 @@ def draw_controls(layout: bpy.types.UILayout, context: bpy.types.Context) -> Non
     row = layout.row(align=True)
     row.prop(settings, "include_alpha")
     row.prop(settings, "include_object_id")
+    layout.prop(settings, "include_material_id")
     draw_environment_pairs(layout, settings, enabled=session is None)
     if session is None:
         layout.operator("render.render_all_cameras", icon="RENDER_STILL")

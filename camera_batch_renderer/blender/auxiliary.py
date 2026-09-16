@@ -10,6 +10,8 @@ import OpenImageIO as oiio
 
 from ..domain.palette import IdColor, allocate_colors
 
+UNASSIGNED_MATERIAL_KEY = "builtin|<Unassigned>"
+
 
 def _srgb_unit_to_linear(normalized: float) -> float:
     if normalized <= 0.04045:
@@ -75,6 +77,102 @@ def replace_with_file_alpha(output_path: Path) -> None:
     save_file_alpha(output_path, output_path)
 
 
+def _configure_id_render(
+    scene: bpy.types.Scene,
+    source: bpy.types.Scene,
+    output_path: Path,
+    *,
+    color_type: str,
+) -> None:
+    render = scene.render
+    render.engine = "BLENDER_WORKBENCH"
+    render.resolution_x = source.render.resolution_x
+    render.resolution_y = source.render.resolution_y
+    render.resolution_percentage = source.render.resolution_percentage
+    render.pixel_aspect_x = source.render.pixel_aspect_x
+    render.pixel_aspect_y = source.render.pixel_aspect_y
+    render.image_settings.file_format = "PNG"
+    render.image_settings.color_mode = "RGB"
+    render.image_settings.color_depth = "8"
+    render.filepath = str(output_path)
+    render.film_transparent = False
+    render.dither_intensity = 0.0
+    scene.display.render_aa = "OFF"
+    shading = scene.display.shading
+    shading.light = "FLAT"
+    shading.color_type = color_type
+    shading.show_shadows = False
+    shading.show_cavity = False
+    shading.show_specular_highlight = False
+    shading.background_type = "VIEWPORT"
+    shading.background_color = (0.0, 0.0, 0.0)
+    scene.view_settings.view_transform = "Standard"
+    scene.view_settings.look = "None"
+    scene.view_settings.exposure = 0.0
+    scene.view_settings.gamma = 1.0
+    scene.view_settings.use_curve_mapping = False
+
+
+def _copy_camera(
+    scene: bpy.types.Scene,
+    camera: bpy.types.Object,
+    objects: list[bpy.types.Object],
+    data_blocks: list[bpy.types.ID],
+) -> None:
+    camera_data = camera.data.copy()
+    camera_copy = bpy.data.objects.new(f"RAC_{camera.name}", camera_data)
+    camera_copy.matrix_world = camera.matrix_world.copy()
+    scene.collection.objects.link(camera_copy)
+    scene.camera = camera_copy
+    objects.append(camera_copy)
+    data_blocks.append(camera_data)
+
+
+def _object_key(obj: bpy.types.Object) -> str:
+    library = obj.library.filepath if obj.library else "local"
+    return f"{library}|{obj.name_full}|{obj.type}"
+
+
+def _evaluated_candidates(
+    depsgraph: bpy.types.Depsgraph,
+    skipped: list[dict[str, str]],
+) -> list[tuple[bpy.types.Object, object, str]]:
+    candidates: list[tuple[bpy.types.Object, object, str]] = []
+    for instance in depsgraph.object_instances:
+        evaluated = instance.object
+        original = evaluated.original
+        if original.type in {"CAMERA", "LIGHT"} or original.hide_render:
+            continue
+        base_key = _object_key(original)
+        if original.type == "VOLUME":
+            skipped.append({"key": base_key, "reason": "Volume is not supported"})
+            continue
+        if instance.is_instance:
+            owner = instance.parent.original if instance.parent else original
+            persistent = ".".join(str(value) for value in instance.persistent_id)
+            key = f"{base_key}|owner:{_object_key(owner)}|instance:{persistent}"
+        else:
+            key = base_key
+        candidates.append((evaluated, instance.matrix_world.copy(), key))
+    return candidates
+
+
+def _cleanup_id_scene(
+    scene: bpy.types.Scene,
+    objects: list[bpy.types.Object],
+    data_blocks: list[bpy.types.ID],
+) -> None:
+    if scene.name in bpy.data.scenes:
+        bpy.data.scenes.remove(scene)
+    for obj in reversed(objects):
+        if obj.name in bpy.data.objects:
+            bpy.data.objects.remove(obj)
+    for data in reversed(data_blocks):
+        collection = getattr(bpy.data, f"{data.bl_rna.identifier.lower()}s", None)
+        if collection is not None and data.name in collection:
+            collection.remove(data)
+
+
 class AlphaScene:
     def __init__(self, source: bpy.types.Scene, camera: bpy.types.Object, output_path: Path):
         self.scene = source.copy()
@@ -108,66 +206,16 @@ class ObjectIdScene:
 
     @staticmethod
     def object_key(obj: bpy.types.Object) -> str:
-        library = obj.library.filepath if obj.library else "local"
-        return f"{library}|{obj.name_full}|{obj.type}"
+        return _object_key(obj)
 
     def _configure(
         self, source: bpy.types.Scene, camera: bpy.types.Object, output_path: Path
     ) -> None:
-        render = self.scene.render
-        render.engine = "BLENDER_WORKBENCH"
-        render.resolution_x = source.render.resolution_x
-        render.resolution_y = source.render.resolution_y
-        render.resolution_percentage = source.render.resolution_percentage
-        render.pixel_aspect_x = source.render.pixel_aspect_x
-        render.pixel_aspect_y = source.render.pixel_aspect_y
-        render.image_settings.file_format = "PNG"
-        render.image_settings.color_mode = "RGB"
-        render.image_settings.color_depth = "8"
-        render.filepath = str(output_path)
-        render.film_transparent = False
-        render.dither_intensity = 0.0
-        self.scene.display.render_aa = "OFF"
-        shading = self.scene.display.shading
-        shading.light = "FLAT"
-        shading.color_type = "OBJECT"
-        shading.show_shadows = False
-        shading.show_cavity = False
-        shading.show_specular_highlight = False
-        shading.background_type = "VIEWPORT"
-        shading.background_color = (0.0, 0.0, 0.0)
-        self.scene.view_settings.view_transform = "Standard"
-        self.scene.view_settings.look = "None"
-        self.scene.view_settings.exposure = 0.0
-        self.scene.view_settings.gamma = 1.0
-        self.scene.view_settings.use_curve_mapping = False
-
-        camera_data = camera.data.copy()
-        camera_copy = bpy.data.objects.new(f"RAC_{camera.name}", camera_data)
-        camera_copy.matrix_world = camera.matrix_world.copy()
-        self.scene.collection.objects.link(camera_copy)
-        self.scene.camera = camera_copy
-        self._objects.append(camera_copy)
-        self._data.append(camera_data)
+        _configure_id_render(self.scene, source, output_path, color_type="OBJECT")
+        _copy_camera(self.scene, camera, self._objects, self._data)
 
         depsgraph = bpy.context.evaluated_depsgraph_get()
-        candidates: list[tuple[bpy.types.Object, object, str]] = []
-        for instance in depsgraph.object_instances:
-            evaluated = instance.object
-            original = evaluated.original
-            if original.type in {"CAMERA", "LIGHT"} or original.hide_render:
-                continue
-            base_key = self.object_key(original)
-            if original.type == "VOLUME":
-                self.skipped.append({"key": base_key, "reason": "Volume is not supported"})
-                continue
-            if instance.is_instance:
-                owner = instance.parent.original if instance.parent else original
-                persistent = ".".join(str(value) for value in instance.persistent_id)
-                key = f"{base_key}|owner:{self.object_key(owner)}|instance:{persistent}"
-            else:
-                key = base_key
-            candidates.append((evaluated, instance.matrix_world.copy(), key))
+        candidates = _evaluated_candidates(depsgraph, self.skipped)
         keys = [key for _evaluated, _matrix, key in candidates]
         self.colors = allocate_colors(keys)
         color_by_key = {item.key: item.rgb for item in self.colors}
@@ -185,12 +233,81 @@ class ObjectIdScene:
                 self.skipped.append({"key": key, "reason": str(exc)})
 
     def cleanup(self) -> None:
-        if self.scene.name in bpy.data.scenes:
-            bpy.data.scenes.remove(self.scene)
-        for obj in reversed(self._objects):
-            if obj.name in bpy.data.objects:
-                bpy.data.objects.remove(obj)
-        for data in reversed(self._data):
-            collection = getattr(bpy.data, f"{data.bl_rna.identifier.lower()}s", None)
-            if collection is not None and data.name in collection:
-                collection.remove(data)
+        _cleanup_id_scene(self.scene, self._objects, self._data)
+
+
+class MaterialIdScene:
+    def __init__(
+        self,
+        source: bpy.types.Scene,
+        camera: bpy.types.Object,
+        output_path: Path,
+    ):
+        self.scene = bpy.data.scenes.new(f"RAC_MaterialID_{uuid.uuid4().hex}")
+        self._objects: list[bpy.types.Object] = []
+        self._data: list[bpy.types.ID] = []
+        self.skipped: list[dict[str, str]] = []
+        self.colors: tuple[IdColor, ...] = ()
+        self.material_names: dict[str, str] = {}
+        self._configure(source, camera, output_path)
+
+    @staticmethod
+    def material_key(material: bpy.types.Material | None) -> str:
+        if material is None:
+            return UNASSIGNED_MATERIAL_KEY
+        library = material.library.filepath if material.library else "local"
+        return f"{library}|{material.name_full}"
+
+    @staticmethod
+    def material_name(material: bpy.types.Material | None) -> str:
+        return material.name if material is not None else "Unassigned"
+
+    def _configure(
+        self, source: bpy.types.Scene, camera: bpy.types.Object, output_path: Path
+    ) -> None:
+        _configure_id_render(self.scene, source, output_path, color_type="MATERIAL")
+        _copy_camera(self.scene, camera, self._objects, self._data)
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        duplicates: list[tuple[bpy.types.Mesh, tuple[str, ...], tuple[int, ...]]] = []
+        for evaluated, matrix_world, object_key in _evaluated_candidates(
+            depsgraph, self.skipped
+        ):
+            try:
+                mesh = bpy.data.meshes.new_from_object(evaluated, depsgraph=depsgraph)
+                self._data.append(mesh)
+                duplicate = bpy.data.objects.new(f"RAC_{evaluated.name}", mesh)
+                self._objects.append(duplicate)
+                duplicate.matrix_world = matrix_world
+                self.scene.collection.objects.link(duplicate)
+                materials = tuple(mesh.materials)
+                if not materials:
+                    materials = (None,)
+                material_keys = tuple(self.material_key(material) for material in materials)
+                material_indices = tuple(polygon.material_index for polygon in mesh.polygons)
+                for material, key in zip(materials, material_keys, strict=True):
+                    self.material_names[key] = self.material_name(material)
+                duplicates.append((mesh, material_keys, material_indices))
+            except Exception as exc:
+                self.skipped.append({"key": object_key, "reason": str(exc)})
+
+        self.colors = allocate_colors(self.material_names)
+        material_by_key: dict[str, bpy.types.Material] = {}
+        for color in self.colors:
+            material = bpy.data.materials.new(f"RAC_MaterialID_{len(material_by_key):04d}")
+            material.diffuse_color = tuple(
+                _object_color_for_output(value) for value in color.rgb
+            ) + (1.0,)
+            material_by_key[color.key] = material
+            self._data.append(material)
+
+        for mesh, material_keys, material_indices in duplicates:
+            mesh.materials.clear()
+            for key in material_keys:
+                mesh.materials.append(material_by_key[key])
+            for polygon, material_index in zip(
+                mesh.polygons, material_indices, strict=True
+            ):
+                polygon.material_index = material_index
+
+    def cleanup(self) -> None:
+        _cleanup_id_scene(self.scene, self._objects, self._data)

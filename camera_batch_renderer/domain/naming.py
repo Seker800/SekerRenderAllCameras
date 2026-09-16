@@ -82,8 +82,11 @@ def output_filename(
     elif channel is Channel.ALPHA:
         pieces = [safe_blend, safe_camera, channel.value, dimensions]
         extension = ".png"
-    else:
+    elif channel is Channel.OBJECT_ID:
         pieces = [safe_blend, safe_camera, channel.value, dimensions, "Object"]
+        extension = ".png"
+    else:
+        pieces = [safe_blend, safe_camera, channel.value, dimensions, "Material"]
         extension = ".png"
     if not extension.startswith("."):
         extension = f".{extension}"

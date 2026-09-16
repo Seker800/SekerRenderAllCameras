@@ -57,6 +57,18 @@ def main() -> None:
         cube = bpy.context.object
         cube.name = "Test Cube"
         original_cube_color = tuple(cube.color)
+        material_a = bpy.data.materials.new("Test Material A")
+        material_b = bpy.data.materials.new("Test Material B")
+        material_a.diffuse_color = (0.8, 0.1, 0.1, 1.0)
+        material_b.diffuse_color = (0.1, 0.1, 0.8, 1.0)
+        cube.data.materials.append(material_a)
+        cube.data.materials.append(material_b)
+        for polygon in cube.data.polygons:
+            polygon.material_index = 1 if polygon.normal.z > 0.5 else 0
+        original_material_slots = tuple(cube.data.materials)
+        original_material_colors = tuple(
+            tuple(material.diffuse_color) for material in original_material_slots
+        )
         camera_objects = []
         for index, name in enumerate(("Camera 10", "Camera 2")):
             camera_data = bpy.data.cameras.new(name)
@@ -230,11 +242,12 @@ def main() -> None:
             scene,
             include_alpha=True,
             include_object_id=True,
+            include_material_id=True,
             environment_pairs=environment_pairs,
         )
         progress = session.coordinator.snapshot()
         assert_true(progress.status.value == "completed", "Batch did not complete")
-        assert_true(len(progress.results) == 6, "Expected six channel results")
+        assert_true(len(progress.results) == 8, "Expected eight channel results")
         assert_true(all(result.path.exists() for result in progress.results), "Output missing")
         assert_true(progress.results[0].camera_name == "Camera 2", "Natural order is wrong")
         assert_true(scene.camera == original_camera, "Active camera was not restored")
@@ -250,6 +263,15 @@ def main() -> None:
             "Batch did not restore collection visibility",
         )
         assert_true(tuple(cube.color) == original_cube_color, "Original object color changed")
+        assert_true(
+            tuple(cube.data.materials) == original_material_slots,
+            "Original material slots changed",
+        )
+        assert_true(
+            tuple(tuple(material.diffuse_color) for material in original_material_slots)
+            == original_material_colors,
+            "Original material colors changed",
+        )
         assert_true(not session.allocation.marker.exists(), "Progress marker was not removed")
         assert_true(
             len(list(session.allocation.directory.glob("*_RenderInfo.json"))) == 1,
@@ -285,6 +307,33 @@ def main() -> None:
             actual_colors = image_rgb_values(result.path)
             assert_true(actual_colors <= allowed_colors, f"Unexpected ID colors: {actual_colors}")
             assert_true(actual_colors - {(0, 0, 0)}, "Object ID image contains no labels")
+        material_manifests = list(session.allocation.directory.glob("*_MaterialID.json"))
+        assert_true(len(material_manifests) == 1, "Material ID manifest missing")
+        material_payload = json.loads(
+            material_manifests[0].read_text(encoding="utf-8")
+        )
+        material_names = {item["name"] for item in material_payload["materials"]}
+        assert_true(
+            {"Test Material A", "Test Material B"} <= material_names,
+            f"Material ID manifest is missing assigned materials: {material_names}",
+        )
+        allowed_material_colors = {
+            (0, 0, 0),
+            *(tuple(item["rgb"]) for item in material_payload["materials"]),
+        }
+        material_results = [
+            result for result in progress.results if result.channel.value == "MaterialID"
+        ]
+        for result in material_results:
+            actual_colors = image_rgb_values(result.path)
+            assert_true(
+                actual_colors <= allowed_material_colors,
+                f"Unexpected Material ID colors: {actual_colors}",
+            )
+            assert_true(
+                len(actual_colors - {(0, 0, 0)}) >= 2,
+                f"Material ID image did not preserve face assignments: {actual_colors}",
+            )
         alpha_results = [result for result in progress.results if result.channel.value == "Alpha"]
         for result in alpha_results:
             alpha_values = image_rgb_values(result.path)
@@ -295,8 +344,10 @@ def main() -> None:
             )
 
         scene.render.film_transparent = True
-        object_id_paths = {
-            result.path for result in progress.results if result.channel.value == "ObjectID"
+        disabled_channel_paths = {
+            result.path
+            for result in progress.results
+            if result.channel.value in {"ObjectID", "MaterialID"}
         }
         overwritten_path = next(
             result.path for result in progress.results if result.channel.value == "Beauty"
@@ -312,7 +363,7 @@ def main() -> None:
             "Transparent Alpha output missing",
         )
         assert_true(
-            all(path.exists() for path in object_id_paths),
+            all(path.exists() for path in disabled_channel_paths),
             "Outputs for a disabled channel were removed",
         )
         assert_true(stale_file.read_bytes() == b"keep me", "Unrelated old output was changed")
@@ -333,6 +384,15 @@ def main() -> None:
             not any(item.name.startswith("RAC_") for item in bpy.data.scenes),
             "Temporary scene leaked",
         )
+        for collection, label in (
+            (bpy.data.objects, "object"),
+            (bpy.data.meshes, "mesh"),
+            (bpy.data.materials, "material"),
+        ):
+            assert_true(
+                not any(item.name.startswith("RAC_") for item in collection),
+                f"Temporary {label} leaked",
+            )
 
         cancelled = create_session(scene, include_alpha=False, include_object_id=False)
         cancelled.start()
@@ -352,6 +412,28 @@ def main() -> None:
         assert_true(
             tuple(light.hide_render for light in light_objects) == original_light_states,
             "Cancellation did not restore light visibility",
+        )
+
+        material_cancelled = create_session(
+            scene,
+            include_alpha=False,
+            include_object_id=False,
+            include_material_id=True,
+        )
+        material_cancelled.start()
+        material_cancelled.prepare_current()
+        material_cancelled.adapter.render_sync()
+        material_cancelled.complete_current()
+        material_cancelled.prepare_current()
+        assert_true(
+            any(item.name.startswith("RAC_MaterialID_") for item in bpy.data.scenes),
+            "Material ID cancellation fixture did not create an auxiliary scene",
+        )
+        material_cancelled.cancel()
+        material_cancelled.finish()
+        assert_true(
+            not any(item.name.startswith("RAC_") for item in bpy.data.materials),
+            "Material ID cancellation leaked temporary materials",
         )
 
         try:
@@ -421,6 +503,28 @@ def main() -> None:
                 for path in session.allocation.directory.iterdir()
             ),
             "A render staging directory leaked",
+        )
+
+        material_failed = create_session(
+            scene,
+            include_alpha=False,
+            include_object_id=False,
+            include_material_id=True,
+        )
+        material_failed.start()
+        material_failed.prepare_current()
+        material_failed.adapter.render_sync()
+        material_failed.complete_current()
+        material_failed.prepare_current()
+        material_failed.fail_current("injected material failure")
+        material_failed.finish()
+        assert_true(
+            not any(item.name.startswith("RAC_") for item in bpy.data.materials),
+            "Material ID failure leaked temporary materials",
+        )
+        assert_true(
+            tuple(cube.data.materials) == original_material_slots,
+            "Material ID failure changed original material slots",
         )
 
         camera_batch_renderer.unregister()

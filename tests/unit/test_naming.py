@@ -37,6 +37,16 @@ class NamingTests(unittest.TestCase):
         )
         self.assertEqual(name, "Room_Main_Beauty_1920x1080_Cycles_S64.png")
 
+    def test_material_id_filename_is_png_and_names_the_mapping_kind(self):
+        settings = RenderSettings("CYCLES", "Cycles", 1920, 1080, "OPEN_EXR", ".exr", 64)
+        name = output_filename(
+            blend_name="Room",
+            camera_name="Main",
+            channel=Channel.MATERIAL_ID,
+            settings=settings,
+        )
+        self.assertEqual(name, "Room_Main_MaterialID_1920x1080_Material.png")
+
     def test_path_budget(self):
         with tempfile.TemporaryDirectory() as directory:
             fitted = fit_path(Path(directory), "x" * 300 + ".png", max_path=120)

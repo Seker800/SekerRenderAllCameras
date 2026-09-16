@@ -2,36 +2,49 @@
 
 **One-click batch rendering for every camera in a Blender scene.** Render still images with
 automatic filenames, per-camera light/World environments, optional alpha masks, Object ID maps,
-and JSON manifests.
+Material ID maps, and JSON manifests.
 
-一键逐个渲染 Blender 当前场景中的全部摄影机，并自动输出规范命名的静帧、Alpha、Object ID
-和 JSON 清单。
+一键逐个渲染 Blender 当前场景中的全部摄影机，并自动输出规范命名的静帧、Alpha、Object ID、
+Material ID 和 JSON 清单。
 
 [![Download Blender Extension](https://img.shields.io/badge/Download-Extension_4.2+-F5792A?style=for-the-badge&logo=blender&logoColor=white)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.2.1.zip)
 [![Download Legacy Add-on](https://img.shields.io/badge/Download-Legacy_4.0.2%E2%80%934.1-555555?style=for-the-badge&logo=blender&logoColor=white)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.2.1-legacy.zip)
 
 [![Latest release](https://img.shields.io/github/v/release/Seker800/SekerRenderAllCameras)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest)
-[![Current source](https://img.shields.io/badge/Current_source-0.4.1-2ea44f)](#whats-new-in-041-current-source)
+[![Current source](https://img.shields.io/badge/Current_source-0.5.0-2ea44f)](#whats-new-in-050-current-source)
 [![Blender 4.0.2+](https://img.shields.io/badge/Blender-4.0.2%2B-F5792A?logo=blender&logoColor=white)](#compatibility)
 [![License: GPL v3+](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](LICENSE)
 
 > Blender 4.2 or newer: **[download the Extension ZIP](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.2.1.zip)**. Blender 4.0.2–4.1: **[download the Legacy Add-on ZIP](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.2.1-legacy.zip)**. Do not unzip either package.
 >
-> The repository source is currently **0.4.1**. The buttons above intentionally keep pointing to
+> The repository source is currently **0.5.0**. The buttons above intentionally keep pointing to
 > the latest published **0.2.1** release artifacts until a newer GitHub Release is published.
 
 ## Plugin at a glance
 
-[![Render All Cameras panel in Blender's 3D Viewport](Docs/images/plugin-quick-start.jpg)](Docs/images/plugin-quick-start.jpg)
+[![Render All Cameras 0.5.0 plugin panel with Material ID and camera environments](Docs/images/plugin-quick-start.jpg)](Docs/images/plugin-quick-start.jpg)
 
 Save the `.blend`, press <kbd>N</kbd> in the 3D Viewport, open **Batch Render**, choose the optional
-Alpha/Object ID outputs, and click **Render All Cameras**. The plugin renders every usable camera to
+Alpha/Object ID/Material ID outputs, and click **Render All Cameras**. The plugin renders every usable camera to
 the fixed `SekerRenderAllCameras/` folder next to the saved `.blend`.
 
-中文：保存 `.blend`，在 3D 视图按 <kbd>N</kbd>，打开 **Batch Render**；按需勾选 Alpha / Object ID，
-然后点击 **Render All Cameras**。点击截图可查看原始大图。
+中文：保存 `.blend`，在 3D 视图按 <kbd>N</kbd>，打开 **Batch Render**；按需勾选 Alpha / Object ID / Material ID，
+然后点击 **Render All Cameras**。上图只保留插件面板，点击可查看原始尺寸。
 
-## What's new in 0.4.1 (current source)
+## What's new in 0.5.0 (current source)
+
+- Add an optional Material ID PNG for every camera. Each Blender Material receives a deterministic,
+  non-black flat color; different material slots on the same mesh remain distinct.
+- Surfaces without a material receive an explicit `Unassigned` color instead of disappearing into
+  the black background.
+- Write `{Blend}_MaterialID.json` with material keys, display names, exact RGB values, hex colors,
+  and skipped geometry.
+- Material ID rendering uses an isolated temporary Workbench scene and does not modify the user's
+  materials, nodes, material slots, or face assignments.
+
+中文：0.5.0 新增 Material ID 通道。同一材质在不同物体、摄影机和重复运行中保持同一颜色；同一模型的不同材质面会输出不同颜色；没有材质的表面使用单独的 `Unassigned` 标签。插件不会修改用户材质或面分配。
+
+### Camera environments included
 
 - Pair any camera with an optional light Collection, an optional Blender World, or both.
 - Selecting a pairing immediately previews its camera, light rig, and World in the current scene.
@@ -43,11 +56,14 @@ the fixed `SekerRenderAllCameras/` folder next to the saved `.blend`.
 - Output still uses the fixed `SekerRenderAllCameras/` folder: new matching images replace old ones,
   while images not generated in the current run remain untouched.
 
-中文：0.4.1 中选中不同配对行会立即切换摄影机、灯组和 World。灯光 Collection 即使事先被隐藏或从 View Layer 排除，渲染时也会自动启用，完成、取消或失败后恢复任务开始时的状态。
+中文：选中不同配对行会立即切换摄影机、灯组和 World。灯光 Collection 即使事先被隐藏或从 View Layer 排除，渲染时也会自动启用，完成、取消或失败后恢复任务开始时的状态。
 
 ### Verified in Blender
 
-The 0.4.1 environment workflow was exercised in Blender 5.2.1 with two cameras, two initially
+The Material ID workflow was exercised in Blender 5.2.1 with a multi-material mesh and an
+unassigned-material object. The exported PNG contained only the black background and the three
+exact colors declared in `MaterialID.json`; original material slots, face assignments, and material
+colors remained unchanged. The environment workflow was also exercised with two cameras, two initially
 hidden and View Layer-excluded light Collections, and two different Worlds. The real EEVEE run
 produced two distinct PNGs, recorded each Camera/Collection/World combination in `RenderInfo.json`,
 and restored the original camera, World, Collection, View Layer, and light visibility afterward.
@@ -62,6 +78,7 @@ The GUI regression run also completed a three-camera queue without stopping afte
 - Give each camera its own light Collection and World without duplicating the scene.
 - Add an optional lossless grayscale Alpha mask for each camera.
 - Add an optional exact-color Object ID map plus a machine-readable color mapping JSON.
+- Add an optional exact-color Material ID map plus a machine-readable material mapping JSON.
 - Name files from the `.blend` file, camera, channel, resolution, and render engine.
 - Reuse one `SekerRenderAllCameras/` folder: newly rendered files replace matching old files, while
   outputs not generated in the current run remain untouched.
@@ -73,8 +90,10 @@ Example filenames:
 ProductShot_Camera_Front_Beauty_1920x1080_Cycles.png
 ProductShot_Camera_Front_Alpha_1920x1080.png
 ProductShot_Camera_Front_ObjectID_1920x1080_Object.png
+ProductShot_Camera_Front_MaterialID_1920x1080_Material.png
 ProductShot_RenderInfo.json
 ProductShot_ObjectID.json
+ProductShot_MaterialID.json
 ```
 
 ## Install
@@ -97,7 +116,7 @@ ProductShot_ObjectID.json
 1. Save the `.blend` file—the output location is based on it.
 2. Put the mouse over the 3D Viewport and press <kbd>N</kbd>.
 3. Open **Batch Render → Render All Cameras**.
-4. Enable Alpha and/or Object ID if needed.
+4. Enable Alpha, Object ID, and/or Material ID if needed.
 5. Optional: under **Camera Environments**, press **+**, choose a Camera, then choose a Light
    Collection and/or World. Child Collections are included automatically.
 6. Click **Render All Cameras**.
@@ -118,8 +137,10 @@ MyProject/
    ├─ ...Beauty....png
    ├─ ...Alpha....png
    ├─ ...ObjectID....png
+   ├─ ...MaterialID....png
    ├─ ...RenderInfo.json
-   └─ ...ObjectID.json
+   ├─ ...ObjectID.json
+   └─ ...MaterialID.json
 ```
 
 中文快速使用：Blender 4.2+ 下载 Extension 包并选择“从磁盘安装”；Blender 4.0.2–4.1
@@ -130,7 +151,7 @@ MyProject/
 
 Open [`examples/RenderAllCameras_Demo.blend`](examples/RenderAllCameras_Demo.blend) to try a small
 two-camera acceptance scene. A complete run produces two Beauty images, two Alpha images, two
-Object ID images, `RenderInfo.json`, and `ObjectID.json`.
+Object ID images, two Material ID images, `RenderInfo.json`, `ObjectID.json`, and `MaterialID.json`.
 
 ## Compatibility
 
@@ -149,7 +170,7 @@ No maximum Blender version is declared. New Blender releases are intended to rem
 the tested versions above are the release gates. Blender 4.0.2–4.1 use the Legacy package because
 the official Extensions system begins with Blender 4.2.
 
-Object ID does not currently include Volume objects. Animation, Material ID, Cryptomatte,
+Object ID and Material ID do not currently include Volume objects. Animation, Cryptomatte,
 Multiview, multi-Scene queues, and distributed rendering are outside the first release.
 
 ## Development and tests
@@ -160,12 +181,13 @@ python -m unittest discover -s tests/architecture -v
 uvx ruff check camera_batch_renderer tests scripts
 blender --background --factory-startup --python scripts/run_blender_tests.py
 blender --background --factory-startup --python scripts/run_environment_pair_acceptance.py
+blender --background --factory-startup --python scripts/run_material_id_acceptance.py
 powershell -ExecutionPolicy Bypass -File scripts/build_extension.ps1
 ```
 
 The test suite covers naming, natural camera order, per-camera light/World switching, fixed-folder
 preservation and manifests, state restoration, cancellation, handled failures, Alpha/Object ID
-pixels, Blender 4.0.2/4.1/4.2/4.5/5.2 integration, both package formats,
+and Material ID pixels, Blender 4.0.2/4.1/4.2/4.5/5.2 integration, both package formats,
 installed-package rendering, and UI registration.
 
 Architecture and implementation documentation lives in [`Docs/`](Docs/README.md). The original

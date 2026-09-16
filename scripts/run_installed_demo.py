@@ -26,10 +26,11 @@ def main() -> None:
         scene,
         include_alpha=True,
         include_object_id=True,
+        include_material_id=True,
     )
     progress = session.coordinator.snapshot()
     assert_true(progress.status.value == "completed", "Installed batch did not complete")
-    assert_true(len(progress.results) == 6, "Installed batch did not produce six results")
+    assert_true(len(progress.results) == 8, "Installed batch did not produce eight results")
     assert_true(all(result.path.exists() for result in progress.results), "An output is missing")
     assert_true(scene.camera == original_camera, "Active camera was not restored")
     assert_true(scene.render.filepath == original_filepath, "Render filepath was not restored")
@@ -58,6 +59,21 @@ def main() -> None:
             finally:
                 bpy.data.images.remove(image)
 
+    material_manifest = next(session.allocation.directory.glob("*_MaterialID.json"))
+    material_payload = json.loads(material_manifest.read_text(encoding="utf-8"))
+    material_allowed = {
+        (0, 0, 0),
+        *(tuple(item["rgb"]) for item in material_payload["materials"]),
+    }
+    for result in progress.results:
+        if result.channel.value == "MaterialID":
+            colors = auxiliary.read_png_colors(result.path)
+            assert_true(
+                colors <= material_allowed,
+                f"Material ID contains undeclared colors: {colors}",
+            )
+            assert_true(colors - {(0, 0, 0)}, "Material ID contains no material label")
+
     render_info = next(session.allocation.directory.glob("*_RenderInfo.json"))
     payload = json.loads(render_info.read_text(encoding="utf-8"))
     assert_true(payload["status"] == "completed", "RenderInfo is not completed")
@@ -73,6 +89,7 @@ def main() -> None:
                 "results": len(progress.results),
                 "render_info": render_info.name,
                 "object_id_info": id_manifest.name,
+                "material_id_info": material_manifest.name,
             },
             ensure_ascii=False,
         ),

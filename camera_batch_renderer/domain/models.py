@@ -10,6 +10,7 @@ class Channel(StrEnum):
     BEAUTY = "Beauty"
     ALPHA = "Alpha"
     OBJECT_ID = "ObjectID"
+    MATERIAL_ID = "MaterialID"
 
 
 class BatchStatus(StrEnum):

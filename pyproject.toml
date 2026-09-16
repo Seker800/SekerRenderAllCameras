@@ -1,6 +1,6 @@
 [project]
 name = "camera-batch-renderer"
-version = "0.4.1"
+version = "0.5.0"
 description = "Render still images from every camera in a Blender scene"
 requires-python = ">=3.10"
 license = { text = "GPL-3.0-or-later" }

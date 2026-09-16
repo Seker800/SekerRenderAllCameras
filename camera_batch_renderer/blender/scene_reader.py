@@ -81,7 +81,13 @@ def _samples(scene: bpy.types.Scene) -> int | None:
     return None
 
 
-def validate_scene(scene: bpy.types.Scene, *, include_alpha: bool, include_object_id: bool) -> None:
+def validate_scene(
+    scene: bpy.types.Scene,
+    *,
+    include_alpha: bool,
+    include_object_id: bool,
+    include_material_id: bool = False,
+) -> None:
     if not bpy.data.filepath:
         raise ValueError("Save the .blend file before rendering")
     if scene.render.image_settings.file_format not in SUPPORTED_FORMATS:
@@ -90,8 +96,12 @@ def validate_scene(scene: bpy.types.Scene, *, include_alpha: bool, include_objec
         raise ValueError("Multi-view rendering is not supported")
     if not any(obj.type == "CAMERA" and obj.data is not None for obj in scene.objects):
         raise ValueError("The current scene has no cameras")
-    if (include_alpha or include_object_id) and scene.render.engine not in AUXILIARY_ENGINES:
-        raise ValueError("Alpha and Object ID are not validated for the current render engine")
+    if (
+        include_alpha or include_object_id or include_material_id
+    ) and scene.render.engine not in AUXILIARY_ENGINES:
+        raise ValueError(
+            "Alpha, Object ID, and Material ID are not validated for the current render engine"
+        )
 
 
 def build_render_plan(
@@ -99,12 +109,18 @@ def build_render_plan(
     *,
     include_alpha: bool,
     include_object_id: bool,
+    include_material_id: bool = False,
     output_directory: Path,
     environment_pairs: tuple[
         tuple[bpy.types.Object | None, bpy.types.Collection | None, bpy.types.World | None], ...
     ] = (),
 ) -> RenderPlan:
-    validate_scene(scene, include_alpha=include_alpha, include_object_id=include_object_id)
+    validate_scene(
+        scene,
+        include_alpha=include_alpha,
+        include_object_id=include_object_id,
+        include_material_id=include_material_id,
+    )
     environments = _environment_specs(scene, environment_pairs)
     cameras = camera_specs(
         (camera_key(obj), obj.name) for obj in scene.objects if obj.type == "CAMERA"
@@ -119,6 +135,8 @@ def build_render_plan(
         channels.append(Channel.ALPHA)
     if include_object_id:
         channels.append(Channel.OBJECT_ID)
+    if include_material_id:
+        channels.append(Channel.MATERIAL_ID)
     blend_path = Path(bpy.data.filepath)
     engine = scene.render.engine
     engine_label = {

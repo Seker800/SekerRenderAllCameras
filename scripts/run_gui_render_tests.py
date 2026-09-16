@@ -48,6 +48,9 @@ def prepare_scene() -> None:
     scene.render.resolution_percentage = 100
     scene.render.filepath = "original-output"
     bpy.ops.mesh.primitive_cube_add()
+    cube = next(obj for obj in scene.objects if obj.type == "MESH")
+    material = bpy.data.materials.new("GUI Test Material")
+    cube.data.materials.append(material)
     for index in range(3):
         camera_data = bpy.data.cameras.new(f"Camera {index + 1}")
         camera = bpy.data.objects.new(f"Camera {index + 1}", camera_data)
@@ -74,6 +77,7 @@ def prepare_scene() -> None:
     paired_world = bpy.data.worlds.new("GUI Camera World")
     bpy.ops.wm.save_as_mainfile(filepath=str(temporary / "GUI Fixture.blend"))
     camera_batch_renderer.register()
+    scene.rac_settings.include_material_id = True
     pair = scene.rac_settings.environment_pairs.add()
     pair.camera = scene.camera
     pair.light_collection = light_collection
@@ -88,12 +92,18 @@ def validate_result() -> None:
     scene = bpy.context.scene
     output = temporary / "SekerRenderAllCameras"
     images = list(output.glob("*_Beauty_*.png"))
+    material_images = list(output.glob("*_MaterialID_*.png"))
     manifests = list(output.glob("*_RenderInfo.json"))
     assert_true(len(images) == 3, f"Expected three GUI renders, found {len(images)}")
+    assert_true(
+        len(material_images) == 3,
+        f"Expected three GUI Material ID renders, found {len(material_images)}",
+    )
+    assert_true((output / "GUI Fixture_MaterialID.json").is_file(), "Material ID JSON missing")
     assert_true(len(manifests) == 1, "GUI RenderInfo is missing")
     payload = json.loads(manifests[0].read_text(encoding="utf-8"))
     assert_true(payload["status"] == "completed", "GUI batch did not complete")
-    assert_true(len(payload["results"]) == 3, "GUI results were not fully recorded")
+    assert_true(len(payload["results"]) == 6, "GUI results were not fully recorded")
     assert_true(scene.camera == original_camera, "GUI test did not restore active camera")
     assert_true(scene.render.filepath == original_filepath, "GUI test did not restore filepath")
     assert_true(scene.world == original_world, "GUI test did not restore World")
@@ -109,6 +119,10 @@ def validate_result() -> None:
     assert_true(
         not any(path.name.startswith(".staging-") for path in output.iterdir()),
         "GUI render staging directory leaked",
+    )
+    assert_true(
+        not any(item.name.startswith("RAC_") for item in bpy.data.materials),
+        "GUI Material ID render leaked temporary materials",
     )
     assert_true(max_window_count == 1, "GUI batch opened a separate render window")
 

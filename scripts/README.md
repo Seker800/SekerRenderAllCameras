@@ -11,3 +11,5 @@
 - `test_legacy_install.py`：在隔离的 Blender 用户脚本目录中验证 Legacy 包安装、启用、面板、禁用与清理。
 - `run_installed_demo.py`：针对已安装 Extension 运行演示场景端到端验收。
 - `run_environment_pair_acceptance.py`：创建两 Camera、两套隐藏/排除灯组与两个 World 的 EEVEE 真实场景，实际导出 Beauty，检查图片色彩、RenderInfo 和宿主状态恢复。验收产物保留在 `build/environment-pair-acceptance/`。
+- `run_material_id_acceptance.py`：创建双材质面与未分配材质物体，实际导出 Material ID PNG，逐像素核对黑色背景、稳定颜色映射、材质槽/面分配不变和临时数据清理。验收产物保留在 `build/material-id-acceptance/`。
+- `capture_plugin_screenshot.py`：在真实 Blender GUI 中加载已安装插件、展开 3D View 的插件侧栏并截取编辑器区域；通过 `RAC_SCREENSHOT_PATH` 指定临时截图位置，不保存 `.blend`。

@@ -60,6 +60,8 @@ class BlenderBatchSession:
         self.adapter.cleanup_auxiliary()
         if completed_channel is Channel.OBJECT_ID:
             self.write_object_id_manifest()
+        elif completed_channel is Channel.MATERIAL_ID:
+            self.write_material_id_manifest()
         self.write_manifest()
         return next_action
 
@@ -95,7 +97,7 @@ class BlenderBatchSession:
         progress = self.coordinator.snapshot()
         payload = {
             "schema_version": 2,
-            "addon_version": "0.4.1",
+            "addon_version": "0.5.0",
             "blender_version": bpy.app.version_string,
             "status": progress.status.value,
             "blend_file": str(self.coordinator.plan.blend_path),
@@ -138,6 +140,7 @@ class BlenderBatchSession:
             ],
             "known_limitations": [
                 "Volume objects are excluded from Object ID",
+                "Volume materials are excluded from Material ID",
                 "Third-party render engines are only guaranteed for Beauty after validation",
             ],
             "results": [
@@ -173,17 +176,44 @@ class BlenderBatchSession:
             }
         )
 
+    def write_material_id_manifest(self) -> None:
+        path = self.allocation.directory / (
+            f"{self.coordinator.plan.blend_name}_MaterialID.json"
+        )
+        AtomicJsonWriter(path).write(
+            {
+                "schema_version": 1,
+                "background": "#000000",
+                "materials": [
+                    {
+                        "key": color.key,
+                        "name": self.adapter.material_id_names[color.key],
+                        "rgb": list(color.rgb),
+                        "hex": color.hex,
+                    }
+                    for color in self.adapter.material_id_colors
+                ],
+                "skipped": self.adapter.material_id_skipped,
+            }
+        )
+
 
 def create_session(
     scene: bpy.types.Scene,
     *,
     include_alpha: bool,
     include_object_id: bool,
+    include_material_id: bool = False,
     environment_pairs: tuple[
         tuple[bpy.types.Object | None, bpy.types.Collection | None, bpy.types.World | None], ...
     ] = (),
 ) -> BlenderBatchSession:
-    validate_scene(scene, include_alpha=include_alpha, include_object_id=include_object_id)
+    validate_scene(
+        scene,
+        include_alpha=include_alpha,
+        include_object_id=include_object_id,
+        include_material_id=include_material_id,
+    )
     output_directory = Path(bpy.data.filepath).parent / OUTPUT_DIRECTORY_NAME
     allocation = prepare_output_directory(output_directory)
     staging_directory = Path(tempfile.mkdtemp(prefix=".staging-", dir=output_directory))
@@ -192,6 +222,7 @@ def create_session(
             scene,
             include_alpha=include_alpha,
             include_object_id=include_object_id,
+            include_material_id=include_material_id,
             output_directory=allocation.directory,
             environment_pairs=environment_pairs,
         )
@@ -243,6 +274,7 @@ def run_batch_sync(
     *,
     include_alpha: bool = False,
     include_object_id: bool = False,
+    include_material_id: bool = False,
     environment_pairs: tuple[
         tuple[bpy.types.Object | None, bpy.types.Collection | None, bpy.types.World | None], ...
     ] = (),
@@ -251,6 +283,7 @@ def run_batch_sync(
         scene,
         include_alpha=include_alpha,
         include_object_id=include_object_id,
+        include_material_id=include_material_id,
         environment_pairs=environment_pairs,
     )
     try:
