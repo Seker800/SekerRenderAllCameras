@@ -33,8 +33,27 @@ class TargetPackagingTests(unittest.TestCase):
                     policy = archive.read(
                         f"{prefix}presentation/host_policy.py"
                     ).decode("utf-8")
+                    entry = archive.read(f"{prefix}__init__.py").decode("utf-8")
+                    minimum = tuple(
+                        int(part) for part in item["version_min"].split(".")
+                    )
+                    maximum = tuple(
+                        int(part) for part in item["version_max"].split(".")
+                    )
                     self.assertIn(f'TARGET_ID = {item["id"]!r}', policy)
                     self.assertIn(item["driver"], policy)
+                    self.assertIn(
+                        f"SUPPORTED_VERSION_MIN = {minimum!r}",
+                        policy,
+                    )
+                    self.assertIn(
+                        f"SUPPORTED_VERSION_MAX = {maximum!r}",
+                        policy,
+                    )
+                    self.assertIn(
+                        f'"blender": {minimum!r}',
+                        entry,
+                    )
                     manifest_name = f"{prefix}blender_manifest.toml"
                     if item["package_type"] == "legacy":
                         self.assertNotIn(manifest_name, names)

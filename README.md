@@ -7,23 +7,22 @@ Material ID maps, and JSON manifests.
 一键逐个渲染 Blender 当前场景中的全部摄影机，并自动输出规范命名的静帧、Alpha、Object ID、
 Material ID 和 JSON 清单。
 
-[![Download Blender Extension](https://img.shields.io/badge/Download-Extension_4.2+-F5792A?style=for-the-badge&logo=blender&logoColor=white)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.5.1.zip)
-[![Download Legacy Add-on](https://img.shields.io/badge/Download-Legacy_4.0.2%E2%80%934.1-555555?style=for-the-badge&logo=blender&logoColor=white)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.5.1-legacy.zip)
+[![Download Blender 4.0.2](https://img.shields.io/badge/Download-Blender_4.0.2-555555?style=for-the-badge&logo=blender&logoColor=white)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.6.0-blender-4.0.2.zip)
+[![Download Blender 4.1.1](https://img.shields.io/badge/Download-Blender_4.1.1-555555?style=for-the-badge&logo=blender&logoColor=white)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.6.0-blender-4.1.1.zip)
+[![Download Blender 4.2.0](https://img.shields.io/badge/Download-Blender_4.2.0-F5792A?style=for-the-badge&logo=blender&logoColor=white)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.6.0-blender-4.2.0.zip)
+[![Download Blender 4.5 LTS](https://img.shields.io/badge/Download-Blender_4.5_LTS-F5792A?style=for-the-badge&logo=blender&logoColor=white)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.6.0-blender-4.5-lts.zip)
+[![Download Blender 5.2 LTS](https://img.shields.io/badge/Download-Blender_5.2_LTS-F5792A?style=for-the-badge&logo=blender&logoColor=white)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.6.0-blender-5.2-lts.zip)
 
 [![Latest release](https://img.shields.io/github/v/release/Seker800/SekerRenderAllCameras)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest)
-[![Current source](https://img.shields.io/badge/Current_source-0.5.1-2ea44f)](#whats-new-in-051-current-source)
+[![Current source](https://img.shields.io/badge/Current_source-0.6.0-2ea44f)](#whats-new-in-060-current-source)
 [![Blender 4.0.2+](https://img.shields.io/badge/Blender-4.0.2%2B-F5792A?logo=blender&logoColor=white)](#compatibility)
 [![License: GPL v3+](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](LICENSE)
 
-> Blender 4.2 or newer: **[download the Extension ZIP](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.5.1.zip)**. Blender 4.0.2–4.1: **[download the Legacy Add-on ZIP](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.5.1-legacy.zip)**. Do not unzip either package.
+> Download the package whose name exactly matches Blender 4.0.2, 4.1.1, 4.2.0, 4.5 LTS, or
+> 5.2 LTS. Do not unzip it and do not substitute a package from another Blender line.
 >
-> The repository source is currently **0.5.1**. A release is complete only after both links above
-> resolve to the matching Extension and Legacy assets in the latest GitHub Release.
-
-> **Development direction:** the next release no longer uses one universal Extension/Legacy pair.
-> It builds separate packages for Blender 4.0.2, 4.1.1, 4.2.0, 4.5 LTS, and 5.2 LTS; each package
-> has its own version bounds, host policy, installation test, GUI test, and checksum. The download
-> buttons above remain the currently published 0.5.1 assets until that release is published.
+> The repository source is currently **0.6.0**. A release is complete only after all five links
+> resolve to byte-for-byte matching assets in the latest GitHub Release.
 
 ## Plugin at a glance
 
@@ -36,14 +35,14 @@ the fixed `SekerRenderAllCameras/` folder next to the saved `.blend`.
 中文：保存 `.blend`，在 3D 视图按 <kbd>N</kbd>，打开 **Batch Render**；按需勾选 Alpha / Object ID / Material ID，
 然后点击 **Render All Cameras**。上图只保留插件面板，点击可查看原始尺寸。
 
-## What's new in 0.5.1 (current source)
+## What's new in 0.6.0 (current source)
 
-- Show the running add-on version directly in both Blender panels, making a stale in-memory add-on
-  immediately visible after an update.
-- Add a release gate that requires byte-identical functional files in the Extension and Legacy ZIPs
-  and rejects stale versions or download links.
+- Publish five separately bounded packages for Blender 4.0.2, 4.1.1, 4.2.0, 4.5 LTS, and 5.2 LTS.
+- Run the same background, GUI, stress, wrong-version, installed-package, and semantic-contract
+  gates against every target; a pass on one Blender version cannot substitute for another.
+- Require GitHub assets to match the SHA-256 of the locally tested packages before release closure.
 
-中文：0.5.1 在插件面板中直接显示当前运行版本，并新增双包与发布门禁，防止 Blender 仍加载旧版、两种安装包功能不一致或首页继续下载旧包。
+中文：0.6.0 为五个 Blender 目标分别构建、测试和发布，不再提供模糊的通用包；发布后还会下载线上资产并与本地已测试包逐字节校验。
 
 ### Material ID included since 0.5.0
 
@@ -112,16 +111,16 @@ ProductShot_MaterialID.json
 
 ## Install
 
-### Blender 4.2 or newer
+### Blender 4.2.0, 4.5 LTS, or 5.2 LTS
 
-1. **[Download `camera_batch_renderer-0.5.1.zip`](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.5.1.zip)**.
+1. Download the matching Extension ZIP from the five buttons at the top of this page.
 2. In Blender, open **Edit → Preferences → Get Extensions**.
 3. Open the top-right menu and choose **Install from Disk**.
 4. Select the downloaded ZIP. Do not extract it first.
 
-### Blender 4.0.2–4.1
+### Blender 4.0.2 or 4.1.1
 
-1. **[Download `camera_batch_renderer-0.5.1-legacy.zip`](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.5.1-legacy.zip)**.
+1. Download the matching Legacy ZIP from the five buttons at the top of this page.
 2. In Blender, open **Edit → Preferences → Add-ons**.
 3. Click **Install…**, choose the downloaded ZIP, then enable **Render: Render All Cameras**.
 
@@ -157,8 +156,9 @@ MyProject/
    └─ ...MaterialID.json
 ```
 
-中文快速使用：Blender 4.2+ 下载 Extension 包并选择“从磁盘安装”；Blender 4.0.2–4.1
-下载 Legacy 包并从“插件”页安装。不要解压 ZIP。保存 `.blend` 后，将鼠标放到 3D 视图并按
+中文快速使用：Blender 4.2/4.5/5.2 下载对应 Extension 包并选择“从磁盘安装”；Blender
+4.0.2/4.1.1 下载各自的 Legacy 包并从“插件”页安装。不要跨版本混用或解压 ZIP。保存
+`.blend` 后，将鼠标放到 3D 视图并按
 <kbd>N</kbd>，进入 **Batch Render** 标签即可开始批量渲染。
 
 ## Demo
@@ -174,13 +174,13 @@ Object ID images, two Material ID images, `RenderInfo.json`, `ObjectID.json`, an
 | Blender 4.0.2 | Tested; minimum supported version |
 | Blender 4.1.1 | Tested |
 | Blender 4.2.0 | Tested; first Extension version |
-| Blender 4.5.11 LTS | Tested |
+| Blender 4.5.13 LTS | Tested |
 | Blender 5.2.1 LTS | Tested |
 | Blender 4.0.0–4.0.1 and earlier | Not supported |
 | Cycles, EEVEE, Workbench | Beauty and auxiliary channels supported |
 | Third-party render engines | Beauty only by default |
 
-The current development build does not claim open-ended compatibility. Each supported line has a
+This release does not claim open-ended compatibility. Each supported line has a
 separate version-bounded package and release gate. Blender 4.0.2 and 4.1.1 use separate Legacy
 packages; 4.2.0, 4.5 LTS, and 5.2 LTS use separate Extensions.
 

@@ -13,14 +13,13 @@ def assert_true(condition: bool, message: str) -> None:
 
 
 def main() -> None:
-    runtime = importlib.import_module("bl_ext.user_default.camera_batch_renderer.blender.runtime")
-    auxiliary = importlib.import_module(
-        "bl_ext.user_default.camera_batch_renderer.blender.auxiliary"
+    module_root = os.environ.get(
+        "RAC_INSTALLED_MODULE", "bl_ext.user_default.camera_batch_renderer"
     )
-    panel = importlib.import_module("bl_ext.user_default.camera_batch_renderer.presentation.panel")
-    policy = importlib.import_module(
-        "bl_ext.user_default.camera_batch_renderer.presentation.host_policy"
-    )
+    runtime = importlib.import_module(f"{module_root}.blender.runtime")
+    auxiliary = importlib.import_module(f"{module_root}.blender.auxiliary")
+    panel = importlib.import_module(f"{module_root}.presentation.panel")
+    policy = importlib.import_module(f"{module_root}.presentation.host_policy")
     assert_true(
         policy.TARGET_ID == os.environ["RAC_EXPECTED_TARGET"],
         "Installed target policy does not match the selected Blender package",
@@ -89,6 +88,26 @@ def main() -> None:
         payload["blender_version"] == bpy.app.version_string,
         "RenderInfo Blender version does not match the running host",
     )
+    contract = {
+        "schema_version": 1,
+        "cameras": sorted({result.camera_name for result in progress.results}),
+        "channels": sorted({result.channel.value for result in progress.results}),
+        "result_matrix": sorted(
+            [result.camera_name, result.channel.value] for result in progress.results
+        ),
+        "result_count": len(progress.results),
+        "render_info_schema": payload["schema_version"],
+        "render_info_status": payload["status"],
+        "object_palette": sorted([list(color) for color in allowed]),
+        "material_palette": sorted([list(color) for color in material_allowed]),
+    }
+    contract_output = os.environ.get("RAC_CONTRACT_OUTPUT")
+    if contract_output:
+        contract_path = os.path.abspath(contract_output)
+        os.makedirs(os.path.dirname(contract_path), exist_ok=True)
+        with open(contract_path, "w", encoding="utf-8", newline="\n") as stream:
+            json.dump(contract, stream, ensure_ascii=False, indent=2, sort_keys=True)
+            stream.write("\n")
     print(
         "INSTALLED_DEMO_OK",
         json.dumps(
@@ -104,4 +123,5 @@ def main() -> None:
     )
 
 
-main()
+if __name__ == "__main__":
+    main()

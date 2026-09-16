@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import urllib.request
@@ -74,6 +75,11 @@ def target_artifact_paths(root: Path, version: str) -> list[tuple[dict[str, str]
     ]
 
 
+def _version_tuple_source(value: str) -> bytes:
+    parts = tuple(int(part) for part in value.split("."))
+    return repr(parts).encode()
+
+
 def verify_target_packages(root: Path, version: str) -> list[Path]:
     reference: dict[str, bytes] | None = None
     paths = []
@@ -86,8 +92,22 @@ def verify_target_packages(root: Path, version: str) -> list[Path]:
         manifest = payload.pop("blender_manifest.toml", None)
         if policy is None or target["id"].encode() not in policy:
             raise ValueError(f"Target policy is missing or stale: {target['id']}")
+        for expected in (
+            target["driver"].encode(),
+            b"SUPPORTED_VERSION_MIN = " + _version_tuple_source(target["version_min"]),
+            b"SUPPORTED_VERSION_MAX = " + _version_tuple_source(target["version_max"]),
+        ):
+            if expected not in policy:
+                raise ValueError(
+                    f"Target policy does not contain {expected.decode()}: {target['id']}"
+                )
         if entry is None:
             raise ValueError(f"Entry point is missing: {target['id']}")
+        expected_bl_info = b'"blender": ' + _version_tuple_source(target["version_min"])
+        if expected_bl_info not in entry:
+            raise ValueError(
+                f"Entry point has the wrong Blender minimum: {target['id']}"
+            )
         if target["package_type"] == "extension":
             if manifest is None:
                 raise ValueError(f"Extension manifest is missing: {target['id']}")
@@ -112,16 +132,11 @@ def verify_target_packages(root: Path, version: str) -> list[Path]:
     return paths
 
 
-def release_urls(version: str) -> tuple[str, ...]:
+def release_urls(root: Path, version: str) -> tuple[str, ...]:
     base = f"https://github.com/{GITHUB_REPOSITORY}/releases/latest/download"
-    config = json.loads(
-        (Path(__file__).resolve().parents[1] / "packaging" / "blender_targets.json").read_text(
-            encoding="utf-8"
-        )
-    )
     return tuple(
         f"{base}/{PACKAGE_NAME}-{version}-{target['id']}.zip"
-        for target in config["targets"]
+        for target, _path in target_artifact_paths(root, version)
     )
 
 
@@ -135,7 +150,7 @@ def verify_release_surfaces(root: Path, version: str) -> None:
     required = {
         **{
             f"Target download link {index + 1}": url
-            for index, url in enumerate(release_urls(version))
+            for index, url in enumerate(release_urls(root, version))
         },
         "README current source": f"Current_source-{version}",
         "README source statement": f"currently **{version}**",
@@ -146,7 +161,7 @@ def verify_release_surfaces(root: Path, version: str) -> None:
     surfaces = {
         **{
             f"Target download link {index + 1}": readme
-            for index, _url in enumerate(release_urls(version))
+            for index, _url in enumerate(release_urls(root, version))
         },
         "README current source": readme,
         "README source statement": readme,
@@ -160,7 +175,7 @@ def verify_release_surfaces(root: Path, version: str) -> None:
     stale_links = sorted(
         set(
             re.findall(
-                rf"releases/latest/download/{PACKAGE_NAME}-(\d+\.\d+\.\d+)(?:-legacy)?\.zip",
+                rf"releases/latest/download/{PACKAGE_NAME}-(\d+\.\d+\.\d+)(?:-[^\s\"')]+)?\.zip",
                 readme,
             )
         )
@@ -170,12 +185,23 @@ def verify_release_surfaces(root: Path, version: str) -> None:
         raise ValueError(f"README still contains old download versions: {stale_links}")
 
 
-def verify_online_release(version: str) -> None:
-    for url in release_urls(version):
-        request = urllib.request.Request(url, method="HEAD", headers={"User-Agent": PACKAGE_NAME})
+def verify_online_release(root: Path, version: str) -> None:
+    artifacts = target_artifact_paths(root, version)
+    for url, (_target, local_path) in zip(
+        release_urls(root, version), artifacts, strict=True
+    ):
+        if not local_path.is_file():
+            raise FileNotFoundError(f"Local release artifact is missing: {local_path}")
+        request = urllib.request.Request(url, method="GET", headers={"User-Agent": PACKAGE_NAME})
         with urllib.request.urlopen(request, timeout=30) as response:
             if response.status != 200:
                 raise ValueError(f"Release asset is unavailable ({response.status}): {url}")
+            remote_hash = hashlib.sha256()
+            while chunk := response.read(1024 * 1024):
+                remote_hash.update(chunk)
+        local_hash = hashlib.sha256(local_path.read_bytes()).hexdigest()
+        if remote_hash.hexdigest() != local_hash:
+            raise ValueError(f"Release asset hash does not match the tested package: {url}")
 
 
 def run_gate(
@@ -187,7 +213,7 @@ def run_gate(
     if not packages_only:
         verify_release_surfaces(root, version)
     if verify_online:
-        verify_online_release(version)
+        verify_online_release(root, version)
     print(
         f"RELEASE_GATE_OK version={version} targets={len(packages)} "
         f"packages_only={packages_only} online={verify_online}"
@@ -207,7 +233,7 @@ def main() -> None:
     parser.add_argument(
         "--verify-online",
         action="store_true",
-        help="Also require both assets to exist under the latest GitHub Release.",
+        help="Also download all five latest-release assets and match their local SHA-256.",
     )
     args = parser.parse_args()
     run_gate(

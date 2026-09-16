@@ -6,7 +6,7 @@ bl_info = {
     "name": "Render All Cameras",
     "author": "Seker800",
     # Blender 4.0's add-on discovery parses bl_info with ast.literal_eval.
-    "version": (0, 5, 1),
+    "version": (0, 6, 0),
     "blender": (4, 0, 2),
     "location": "3D Viewport > Sidebar > Batch Render; Properties > Output",
     "description": "Render still images from every camera in the current scene",
