@@ -7,6 +7,7 @@ import bpy
 
 from ..domain import CameraEnvironmentSpec, Channel, RenderPlan, RenderSettings
 from ..domain.naming import camera_specs
+from .compat import is_editable_id
 from .environment import collection_lights, id_key, scene_collection_path
 
 SUPPORTED_FORMATS = {"PNG", "JPEG", "TIFF", "OPEN_EXR", "OPEN_EXR_MULTILAYER"}
@@ -45,7 +46,7 @@ def _environment_specs(
         light_keys = None
         collection_name = None
         if collection is not None:
-            non_editable = next((obj for obj in light_objects if not obj.is_editable), None)
+            non_editable = next((obj for obj in light_objects if not is_editable_id(obj)), None)
             if non_editable is not None:
                 raise ValueError(
                     "Light isolation requires editable lights; create a library override for "
