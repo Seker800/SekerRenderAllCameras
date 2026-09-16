@@ -9,6 +9,7 @@ import numpy as np
 import OpenImageIO as oiio
 
 from ..domain.palette import IdColor, allocate_colors
+from .compat import set_scene_compositing
 
 UNASSIGNED_MATERIAL_KEY = "builtin|<Unassigned>"
 
@@ -91,6 +92,12 @@ def _configure_id_render(
     render.resolution_percentage = source.render.resolution_percentage
     render.pixel_aspect_x = source.render.pixel_aspect_x
     render.pixel_aspect_y = source.render.pixel_aspect_y
+    render.use_border = source.render.use_border
+    render.use_crop_to_border = source.render.use_crop_to_border
+    render.border_min_x = source.render.border_min_x
+    render.border_max_x = source.render.border_max_x
+    render.border_min_y = source.render.border_min_y
+    render.border_max_y = source.render.border_max_y
     render.image_settings.file_format = "PNG"
     render.image_settings.color_mode = "RGB"
     render.image_settings.color_depth = "8"
@@ -183,7 +190,7 @@ class AlphaScene:
         self.scene.render.image_settings.file_format = "PNG"
         self.scene.render.image_settings.color_mode = "RGBA"
         self.scene.render.image_settings.color_depth = "8"
-        self.scene.use_nodes = False
+        set_scene_compositing(self.scene, enabled=False)
 
     def cleanup(self) -> None:
         if self.scene.name in bpy.data.scenes:
@@ -269,9 +276,7 @@ class MaterialIdScene:
         _copy_camera(self.scene, camera, self._objects, self._data)
         depsgraph = bpy.context.evaluated_depsgraph_get()
         duplicates: list[tuple[bpy.types.Mesh, tuple[str, ...], tuple[int, ...]]] = []
-        for evaluated, matrix_world, object_key in _evaluated_candidates(
-            depsgraph, self.skipped
-        ):
+        for evaluated, matrix_world, object_key in _evaluated_candidates(depsgraph, self.skipped):
             try:
                 mesh = bpy.data.meshes.new_from_object(evaluated, depsgraph=depsgraph)
                 self._data.append(mesh)
@@ -304,9 +309,7 @@ class MaterialIdScene:
             mesh.materials.clear()
             for key in material_keys:
                 mesh.materials.append(material_by_key[key])
-            for polygon, material_index in zip(
-                mesh.polygons, material_indices, strict=True
-            ):
+            for polygon, material_index in zip(mesh.polygons, material_indices, strict=True):
                 polygon.material_index = material_index
 
     def cleanup(self) -> None:

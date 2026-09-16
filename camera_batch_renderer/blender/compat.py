@@ -14,3 +14,12 @@ def is_editable_id(data_block: Any) -> bool:
     # Blender 4.0 does not expose ID.is_editable. Local IDs and library
     # overrides are editable there; directly linked IDs are not.
     return data_block.library is None or data_block.override_library is not None
+
+
+def set_scene_compositing(scene: Any, *, enabled: bool) -> None:
+    """Enable or disable compositing across Blender's 4.x/5.x scene APIs."""
+    render = scene.render
+    if hasattr(render, "use_compositing"):
+        render.use_compositing = enabled
+    else:
+        scene.use_nodes = enabled

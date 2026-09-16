@@ -6,9 +6,12 @@ from runpy import run_path
 from types import SimpleNamespace
 
 ROOT = Path(__file__).parents[2]
-is_editable_id = run_path(
-    str(ROOT / "camera_batch_renderer" / "blender" / "compat.py")
-)["is_editable_id"]
+is_editable_id = run_path(str(ROOT / "camera_batch_renderer" / "blender" / "compat.py"))[
+    "is_editable_id"
+]
+set_scene_compositing = run_path(str(ROOT / "camera_batch_renderer" / "blender" / "compat.py"))[
+    "set_scene_compositing"
+]
 
 
 class BlenderIdCompatibilityTests(unittest.TestCase):
@@ -38,6 +41,26 @@ class BlenderIdCompatibilityTests(unittest.TestCase):
         data_block = SimpleNamespace(library=object(), override_library=object())
 
         self.assertTrue(is_editable_id(data_block))
+
+
+class BlenderCompositorCompatibilityTests(unittest.TestCase):
+    def test_uses_render_switch_when_available(self) -> None:
+        scene = SimpleNamespace(
+            render=SimpleNamespace(use_compositing=True),
+            use_nodes=True,
+        )
+
+        set_scene_compositing(scene, enabled=False)
+
+        self.assertFalse(scene.render.use_compositing)
+        self.assertTrue(scene.use_nodes)
+
+    def test_falls_back_to_legacy_scene_switch(self) -> None:
+        scene = SimpleNamespace(render=SimpleNamespace(), use_nodes=True)
+
+        set_scene_compositing(scene, enabled=False)
+
+        self.assertFalse(scene.use_nodes)
 
 
 if __name__ == "__main__":

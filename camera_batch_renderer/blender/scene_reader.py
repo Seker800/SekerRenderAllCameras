@@ -131,6 +131,17 @@ def build_render_plan(
         for camera in cameras
     )
     scale = scene.render.resolution_percentage / 100.0
+    width = max(1, round(scene.render.resolution_x * scale))
+    height = max(1, round(scene.render.resolution_y * scale))
+    if scene.render.use_border and scene.render.use_crop_to_border:
+        width = max(
+            1,
+            round(width * (scene.render.border_max_x - scene.render.border_min_x)),
+        )
+        height = max(
+            1,
+            round(height * (scene.render.border_max_y - scene.render.border_min_y)),
+        )
     channels = [Channel.BEAUTY]
     if include_alpha:
         channels.append(Channel.ALPHA)
@@ -158,8 +169,8 @@ def build_render_plan(
         settings=RenderSettings(
             engine=engine,
             engine_label=engine_label,
-            width=max(1, round(scene.render.resolution_x * scale)),
-            height=max(1, round(scene.render.resolution_y * scale)),
+            width=width,
+            height=height,
             file_format=scene.render.image_settings.file_format,
             file_extension=scene.render.file_extension,
             samples=_samples(scene),
