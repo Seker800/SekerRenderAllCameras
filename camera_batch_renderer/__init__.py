@@ -16,7 +16,9 @@ bl_info = {
 
 def register() -> None:
     from .presentation import register as register_presentation
+    from .presentation.host_policy import ensure_supported_version
 
+    ensure_supported_version()
     register_presentation()
 
 

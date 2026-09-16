@@ -21,6 +21,8 @@ if ($manifestText -notmatch '(?m)^version = "([^"]+)"$') {
     throw "Cannot read package version from blender_manifest.toml"
 }
 $packageVersion = $Matches[1]
+$targetConfig = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "packaging\blender_targets.json") |
+    ConvertFrom-Json
 
 function Invoke-TestStep {
     param(
@@ -140,10 +142,21 @@ if ($Release) {
 Invoke-TestStep "python-unit" $python @("-m", "unittest", "discover", "-s", "tests/unit", "-v") | Out-Null
 Invoke-TestStep "architecture" $python @("-m", "unittest", "discover", "-s", "tests/architecture", "-v") | Out-Null
 Invoke-TestStep "ruff" "uvx" @("ruff", "check", "camera_batch_renderer", "tests", "scripts") | Out-Null
+Invoke-TestStep "package-stage" $python @(
+    (Join-Path $repoRoot "scripts\build_target_packages.py"),
+    (Join-Path $repoRoot "packaging\blender_targets.json"),
+    (Join-Path $repoRoot "camera_batch_renderer"),
+    (Join-Path $repoRoot "build\package-staging"),
+    (Join-Path $repoRoot "dist")
+) | Out-Null
 
 foreach ($row in $blenderRows) {
     $resolvedBlender = $row.path
     $label = $row.label
+    $target = @($targetConfig.targets | Where-Object tested_version -eq $label)
+    if ($target.Count -ne 1) {
+        throw "No unique package target is configured for Blender $label"
+    }
     $runtimeRoot = Join-Path $reportRoot "runtime-$label"
     $environmentPaths = [ordered]@{
         BLENDER_USER_CONFIG = Join-Path $runtimeRoot "config"
@@ -155,12 +168,14 @@ foreach ($row in $blenderRows) {
         TMP = Join-Path $runtimeRoot "temp"
     }
     $previousEnvironment = @{}
+    $oldPackageParent = $env:RAC_PACKAGE_PARENT
     try {
         foreach ($entry in $environmentPaths.GetEnumerator()) {
             $previousEnvironment[$entry.Key] = [Environment]::GetEnvironmentVariable($entry.Key, "Process")
             New-Item -ItemType Directory -Force -Path $entry.Value | Out-Null
             [Environment]::SetEnvironmentVariable($entry.Key, $entry.Value, "Process")
         }
+        $env:RAC_PACKAGE_PARENT = Join-Path $repoRoot "build\package-staging\$($target[0].id)"
         Invoke-TestStep "blender-$label-core" $resolvedBlender @(
             "--background", "--factory-startup", "--python", (Join-Path $repoRoot "scripts\run_blender_tests.py")
         ) -SuccessPattern 'BLENDER_TESTS_OK' | Out-Null
@@ -186,17 +201,20 @@ foreach ($row in $blenderRows) {
         foreach ($name in $environmentPaths.Keys) {
             [Environment]::SetEnvironmentVariable($name, $previousEnvironment[$name], "Process")
         }
+        $env:RAC_PACKAGE_PARENT = $oldPackageParent
     }
 }
 
-$buildBlender = $blenderRows[-1]
-$buildPassed = Invoke-TestStep "package-build" "powershell" @(
+$buildArguments = @(
     "-ExecutionPolicy", "Bypass",
     "-File", (Join-Path $repoRoot "scripts\build_extension.ps1"),
-    "-Blender", $buildBlender.path,
+    "-BlenderPaths", (($blenderRows | ForEach-Object { $_.path }) -join '|'),
     "-Python", $python
 )
-Invoke-TestStep "release-gate" $python @((Join-Path $repoRoot "scripts\release_gate.py")) | Out-Null
+$buildPassed = Invoke-TestStep "package-build" "powershell" $buildArguments
+Invoke-TestStep "release-gate" $python @(
+    (Join-Path $repoRoot "scripts\release_gate.py"), "--packages-only"
+) | Out-Null
 
 if ($buildPassed) {
     foreach ($row in $blenderRows) {
@@ -210,6 +228,8 @@ if ($buildPassed) {
         $oldTemp = $env:TEMP
         $oldTmp = $env:TMP
         $oldLegacy = $env:RAC_LEGACY_PACKAGE
+        $oldExpectedTarget = $env:RAC_EXPECTED_TARGET
+        $oldExpectedMinimum = $env:RAC_EXPECTED_VERSION_MIN
         try {
             $env:BLENDER_USER_CONFIG = Join-Path $testRoot "config"
             $env:BLENDER_USER_SCRIPTS = Join-Path $testRoot "scripts"
@@ -219,10 +239,14 @@ if ($buildPassed) {
             $env:TEMP = Join-Path $testRoot "temp"
             $env:TMP = $env:TEMP
             New-Item -ItemType Directory -Force -Path $env:TEMP | Out-Null
+            $target = @($targetConfig.targets | Where-Object tested_version -eq $row.label)[0]
+            $env:RAC_EXPECTED_TARGET = $target.id
+            $env:RAC_EXPECTED_VERSION_MIN = $target.version_min
             if ($row.version -ge [version]"4.2.0") {
-                $package = Join-Path $repoRoot "dist\camera_batch_renderer-$packageVersion.zip"
+                $package = Join-Path $repoRoot "dist\camera_batch_renderer-$packageVersion-$($target.id).zip"
                 $installed = Invoke-TestStep "blender-$($row.label)-extension-install" $row.path @(
-                    "--command", "extension", "install-file", "-r", "user_default", "-e", $package
+                    "--factory-startup", "--command", "extension", "install-file",
+                    "-r", "user_default", "-e", $package
                 )
                 if ($installed) {
                     $demo = Join-Path $testRoot "RenderAllCameras_Demo.blend"
@@ -238,12 +262,12 @@ if ($buildPassed) {
                         "--background", $demo, "--python", (Join-Path $repoRoot "scripts\run_installed_demo.py")
                     ) -SuccessPattern 'INSTALLED_DEMO_OK' | Out-Null
                     Invoke-TestStep "blender-$($row.label)-extension-remove" $row.path @(
-                        "--command", "extension", "remove", "camera_batch_renderer"
+                        "--factory-startup", "--command", "extension", "remove", "camera_batch_renderer"
                     ) | Out-Null
                 }
             }
             else {
-                $env:RAC_LEGACY_PACKAGE = Join-Path $repoRoot "dist\camera_batch_renderer-$packageVersion-legacy.zip"
+                $env:RAC_LEGACY_PACKAGE = Join-Path $repoRoot "dist\camera_batch_renderer-$packageVersion-$($target.id).zip"
                 Invoke-TestStep "blender-$($row.label)-legacy-install" $row.path @(
                     "--background", "--factory-startup", "--python", (Join-Path $repoRoot "scripts\test_legacy_install.py")
                 ) -SuccessPattern 'LEGACY_INSTALL_TEST_OK' | Out-Null
@@ -258,15 +282,16 @@ if ($buildPassed) {
             $env:TEMP = $oldTemp
             $env:TMP = $oldTmp
             $env:RAC_LEGACY_PACKAGE = $oldLegacy
+            $env:RAC_EXPECTED_TARGET = $oldExpectedTarget
+            $env:RAC_EXPECTED_VERSION_MIN = $oldExpectedMinimum
         }
     }
 }
 
 $failed = @($results | Where-Object status -eq "failed")
-$extensionPath = Join-Path $repoRoot "dist\camera_batch_renderer-$packageVersion.zip"
-$legacyPath = Join-Path $repoRoot "dist\camera_batch_renderer-$packageVersion-legacy.zip"
 $packageHashes = @()
-foreach ($path in @($extensionPath, $legacyPath)) {
+foreach ($target in $targetConfig.targets) {
+    $path = Join-Path $repoRoot "dist\camera_batch_renderer-$packageVersion-$($target.id).zip"
     if (Test-Path -LiteralPath $path -PathType Leaf) {
         $hash = Get-FileHash -Algorithm SHA256 -LiteralPath $path
         $packageHashes += [pscustomobject]@{ path = $path; sha256 = $hash.Hash }

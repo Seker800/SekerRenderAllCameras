@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import os
 
 import bpy
 
@@ -17,6 +18,13 @@ def main() -> None:
         "bl_ext.user_default.camera_batch_renderer.blender.auxiliary"
     )
     panel = importlib.import_module("bl_ext.user_default.camera_batch_renderer.presentation.panel")
+    policy = importlib.import_module(
+        "bl_ext.user_default.camera_batch_renderer.presentation.host_policy"
+    )
+    assert_true(
+        policy.TARGET_ID == os.environ["RAC_EXPECTED_TARGET"],
+        "Installed target policy does not match the selected Blender package",
+    )
     assert_true(panel.RAC_PT_view3d_panel.is_registered, "Installed N-panel is not registered")
     assert_true(panel.RAC_PT_view3d_panel.bl_category == "Batch Render", "N-panel tab is wrong")
     scene = bpy.context.scene

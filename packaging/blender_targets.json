@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "targets": [
+    {
+      "id": "blender-4.0.2",
+      "tested_version": "4.0.2",
+      "version_min": "4.0.2",
+      "version_max": "4.1.0",
+      "package_type": "legacy",
+      "driver": "SynchronousTimerDriver"
+    },
+    {
+      "id": "blender-4.1.1",
+      "tested_version": "4.1.1",
+      "version_min": "4.1.1",
+      "version_max": "4.2.0",
+      "package_type": "legacy",
+      "driver": "SynchronousTimerDriver"
+    },
+    {
+      "id": "blender-4.2.0",
+      "tested_version": "4.2.0",
+      "version_min": "4.2.0",
+      "version_max": "4.3.0",
+      "package_type": "extension",
+      "driver": "SynchronousTimerDriver"
+    },
+    {
+      "id": "blender-4.5-lts",
+      "tested_version": "4.5.13",
+      "version_min": "4.5.0",
+      "version_max": "4.6.0",
+      "package_type": "extension",
+      "driver": "SynchronousTimerDriver"
+    },
+    {
+      "id": "blender-5.2-lts",
+      "tested_version": "5.2.1",
+      "version_min": "5.2.0",
+      "version_max": "5.3.0",
+      "package_type": "extension",
+      "driver": "SynchronousTimerDriver"
+    }
+  ]
+}

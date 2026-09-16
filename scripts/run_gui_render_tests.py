@@ -13,11 +13,15 @@ from pathlib import Path
 import bpy
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+PACKAGE_PARENT = Path(os.environ.get("RAC_PACKAGE_PARENT", REPO_ROOT))
+if str(PACKAGE_PARENT) not in sys.path:
+    sys.path.insert(0, str(PACKAGE_PARENT))
 
 import camera_batch_renderer  # noqa: E402
 from camera_batch_renderer.presentation import runtime_state  # noqa: E402
+from camera_batch_renderer.presentation.host_policy import (  # noqa: E402
+    OPERATOR_START_RESULT,
+)
 
 temporary = Path(tempfile.mkdtemp(prefix="rac-gui-test-"))
 atexit.register(shutil.rmtree, temporary, True)
@@ -135,7 +139,7 @@ def validate_result() -> None:
 
 def start_cancel_test() -> None:
     result = invoke_from_view3d(bpy.ops.render.render_all_cameras)
-    assert_true(result == {"RUNNING_MODAL"}, f"Cancel batch did not start: {result}")
+    assert_true(result == OPERATOR_START_RESULT, f"Cancel batch did not start: {result}")
     assert_true(
         invoke_from_view3d(bpy.ops.render.cancel_all_cameras) == {"FINISHED"},
         "Cancel request was rejected",
@@ -170,7 +174,7 @@ def poll() -> float | None:
         max_window_count = max(max_window_count, len(bpy.context.window_manager.windows))
         if phase == "start_success":
             result = invoke_from_view3d(bpy.ops.render.render_all_cameras)
-            assert_true(result == {"RUNNING_MODAL"}, f"GUI batch did not start: {result}")
+            assert_true(result == OPERATOR_START_RESULT, f"GUI batch did not start: {result}")
             assert_true(
                 bpy.context.preferences.view.render_display_type == "WINDOW",
                 "GUI batch changed the render display preference",

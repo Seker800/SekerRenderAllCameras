@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import urllib.request
 import zipfile
@@ -60,11 +61,67 @@ def verify_package_parity(extension: Path, legacy: Path) -> None:
         raise ValueError(f"Package contents differ: {different}")
 
 
-def release_urls(version: str) -> tuple[str, str]:
+def target_artifact_paths(root: Path, version: str) -> list[tuple[dict[str, str], Path]]:
+    config = json.loads(
+        (root / "packaging" / "blender_targets.json").read_text(encoding="utf-8")
+    )
+    return [
+        (
+            target,
+            root / "dist" / f"{PACKAGE_NAME}-{version}-{target['id']}.zip",
+        )
+        for target in config["targets"]
+    ]
+
+
+def verify_target_packages(root: Path, version: str) -> list[Path]:
+    reference: dict[str, bytes] | None = None
+    paths = []
+    for target, path in target_artifact_paths(root, version):
+        if not path.is_file():
+            raise FileNotFoundError(f"Required target package is missing: {path}")
+        payload = archive_payload(path, legacy=target["package_type"] == "legacy")
+        policy = payload.pop("presentation/host_policy.py", None)
+        entry = payload.pop("__init__.py", None)
+        manifest = payload.pop("blender_manifest.toml", None)
+        if policy is None or target["id"].encode() not in policy:
+            raise ValueError(f"Target policy is missing or stale: {target['id']}")
+        if entry is None:
+            raise ValueError(f"Entry point is missing: {target['id']}")
+        if target["package_type"] == "extension":
+            if manifest is None:
+                raise ValueError(f"Extension manifest is missing: {target['id']}")
+            manifest_text = manifest.decode("utf-8")
+            for key in ("version_min", "version_max"):
+                expected = f'blender_{key} = "{target[key]}"'
+                if expected not in manifest_text:
+                    raise ValueError(f"Manifest does not contain {expected}: {target['id']}")
+        elif manifest is not None:
+            raise ValueError(f"Legacy target contains an Extension manifest: {target['id']}")
+        if reference is None:
+            reference = payload
+        elif payload != reference:
+            differing = sorted(set(payload) ^ set(reference))
+            differing.extend(
+                name
+                for name in set(payload) & set(reference)
+                if payload[name] != reference[name]
+            )
+            raise ValueError(f"Shared package contents differ for {target['id']}: {differing}")
+        paths.append(path)
+    return paths
+
+
+def release_urls(version: str) -> tuple[str, ...]:
     base = f"https://github.com/{GITHUB_REPOSITORY}/releases/latest/download"
-    return (
-        f"{base}/{PACKAGE_NAME}-{version}.zip",
-        f"{base}/{PACKAGE_NAME}-{version}-legacy.zip",
+    config = json.loads(
+        (Path(__file__).resolve().parents[1] / "packaging" / "blender_targets.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    return tuple(
+        f"{base}/{PACKAGE_NAME}-{version}-{target['id']}.zip"
+        for target in config["targets"]
     )
 
 
@@ -76,8 +133,10 @@ def verify_release_surfaces(root: Path, version: str) -> None:
         encoding="utf-8"
     )
     required = {
-        "Extension download link": release_urls(version)[0],
-        "Legacy download link": release_urls(version)[1],
+        **{
+            f"Target download link {index + 1}": url
+            for index, url in enumerate(release_urls(version))
+        },
         "README current source": f"Current_source-{version}",
         "README source statement": f"currently **{version}**",
         "Extension manifest version": f'version = "{version}"',
@@ -85,8 +144,10 @@ def verify_release_surfaces(root: Path, version: str) -> None:
         "changelog heading": f"## {version}",
     }
     surfaces = {
-        "Extension download link": readme,
-        "Legacy download link": readme,
+        **{
+            f"Target download link {index + 1}": readme
+            for index, _url in enumerate(release_urls(version))
+        },
         "README current source": readme,
         "README source statement": readme,
         "Extension manifest version": manifest,
@@ -117,21 +178,19 @@ def verify_online_release(version: str) -> None:
                 raise ValueError(f"Release asset is unavailable ({response.status}): {url}")
 
 
-def run_gate(root: Path, *, verify_online: bool = False) -> None:
+def run_gate(
+    root: Path, *, verify_online: bool = False, packages_only: bool = False
+) -> None:
     root = root.resolve()
     version = read_project_version(root)
-    extension = root / "dist" / f"{PACKAGE_NAME}-{version}.zip"
-    legacy = root / "dist" / f"{PACKAGE_NAME}-{version}-legacy.zip"
-    for path in (extension, legacy):
-        if not path.is_file():
-            raise FileNotFoundError(f"Required package is missing: {path}")
-    verify_package_parity(extension, legacy)
-    verify_release_surfaces(root, version)
+    packages = verify_target_packages(root, version)
+    if not packages_only:
+        verify_release_surfaces(root, version)
     if verify_online:
         verify_online_release(version)
     print(
-        f"RELEASE_GATE_OK version={version} files="
-        f"{len(archive_payload(legacy, legacy=True))} online={verify_online}"
+        f"RELEASE_GATE_OK version={version} targets={len(packages)} "
+        f"packages_only={packages_only} online={verify_online}"
     )
 
 
@@ -141,12 +200,21 @@ def main() -> None:
     )
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument(
+        "--packages-only",
+        action="store_true",
+        help="Verify all five target artifacts without requiring release-page surfaces.",
+    )
+    parser.add_argument(
         "--verify-online",
         action="store_true",
         help="Also require both assets to exist under the latest GitHub Release.",
     )
     args = parser.parse_args()
-    run_gate(args.root, verify_online=args.verify_online)
+    run_gate(
+        args.root,
+        verify_online=args.verify_online,
+        packages_only=args.packages_only,
+    )
 
 
 if __name__ == "__main__":
