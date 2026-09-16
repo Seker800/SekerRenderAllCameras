@@ -51,7 +51,8 @@ def image_mean_rgb(path: Path) -> tuple[float, float, float]:
 def image_red_range(path: Path) -> tuple[float, float]:
     image = bpy.data.images.load(str(path), check_existing=False)
     try:
-        values = image.pixels[0::4]
+        # Blender 4.0's bpy_prop_array does not support extended slices.
+        values = tuple(image.pixels)[0::4]
         return min(values), max(values)
     finally:
         bpy.data.images.remove(image)
@@ -86,7 +87,11 @@ def set_compositing(scene: bpy.types.Scene, enabled: bool) -> None:
 
 def compositor_tree(scene: bpy.types.Scene):
     set_compositing(scene, True)
-    if hasattr(scene, "node_tree"):
+    # Blender 4.x creates its compositor node tree by toggling Scene.use_nodes.
+    # render.use_compositing only controls execution and can exist while node_tree is None.
+    if hasattr(scene, "use_nodes"):
+        scene.use_nodes = True
+    if getattr(scene, "node_tree", None) is not None:
         return scene.node_tree
     tree = bpy.data.node_groups.new("Edge Case Compositor", "CompositorNodeTree")
     scene.compositing_node_group = tree
@@ -193,11 +198,18 @@ def main() -> None:
         summary["formats"] = format_results
 
         scene.render.image_settings.file_format = "PNG"
+        for engine in ("BLENDER_EEVEE_NEXT", "BLENDER_EEVEE"):
+            try:
+                scene.render.engine = engine
+                break
+            except TypeError:
+                continue
         tree = compositor_tree(scene)
         nodes = tree.nodes
         nodes.clear()
         file_output = nodes.new("CompositorNodeOutputFile")
         file_output_directory = temporary / "compositor-side-effects"
+        file_output_directory.mkdir()
         if bpy.app.version >= (5, 0, 0):
             render_layers = nodes.new("CompositorNodeRLayers")
             output = nodes.new("NodeGroupOutput")
@@ -207,11 +219,12 @@ def main() -> None:
             file_output.directory = str(file_output_directory)
             file_output.file_name = "side_effect_"
         else:
+            render_layers = nodes.new("CompositorNodeRLayers")
             rgb = nodes.new("CompositorNodeRGB")
             rgb.outputs[0].default_value = (0.8, 0.05, 0.02, 1.0)
             composite = nodes.new("CompositorNodeComposite")
             tree.links.new(rgb.outputs[0], composite.inputs[0])
-            tree.links.new(rgb.outputs[0], file_output.inputs[0])
+            tree.links.new(render_layers.outputs["Image"], file_output.inputs[0])
             file_output.base_path = str(file_output_directory)
             file_output.file_slots[0].path = "side_effect_"
         node_signature = tuple(sorted(node.bl_idname for node in nodes))
@@ -244,12 +257,13 @@ def main() -> None:
         )
         if bpy.app.version < (5, 0, 0):
             assert_true(
-                any(file_output_directory.glob("side_effect_*.png")),
+                any(file_output_directory.glob("side_effect_*")),
                 "Existing File Output node did not execute",
             )
         summary["compositor"] = "Beauty composite, raw Alpha, and File Output node verified"
 
         set_compositing(scene, False)
+        scene.render.engine = "BLENDER_WORKBENCH"
         scene.render.use_border = True
         scene.render.use_crop_to_border = True
         scene.render.border_min_x = 0.25

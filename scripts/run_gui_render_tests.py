@@ -18,7 +18,6 @@ if str(REPO_ROOT) not in sys.path:
 
 import camera_batch_renderer  # noqa: E402
 from camera_batch_renderer.presentation import runtime_state  # noqa: E402
-from camera_batch_renderer.presentation.operators import _render_complete  # noqa: E402
 
 temporary = Path(tempfile.mkdtemp(prefix="rac-gui-test-"))
 atexit.register(shutil.rmtree, temporary, True)
@@ -35,6 +34,14 @@ original_light_states = ()
 def assert_true(condition: bool, message: str) -> None:
     if not condition:
         raise AssertionError(message)
+
+
+def invoke_from_view3d(operator) -> set[str]:
+    window = bpy.context.window_manager.windows[0]
+    area = next(item for item in window.screen.areas if item.type == "VIEW_3D")
+    region = next(item for item in area.regions if item.type == "WINDOW")
+    with bpy.context.temp_override(window=window, area=area, region=region):
+        return operator("INVOKE_DEFAULT")
 
 
 def prepare_scene() -> None:
@@ -85,7 +92,6 @@ def prepare_scene() -> None:
     original_world = scene.world
     original_light_states = tuple(light.hide_render for light in environment_lights)
     bpy.context.preferences.view.render_display_type = "WINDOW"
-    bpy.app.handlers.render_complete.remove(_render_complete)
 
 
 def validate_result() -> None:
@@ -128,10 +134,10 @@ def validate_result() -> None:
 
 
 def start_cancel_test() -> None:
-    result = bpy.ops.render.render_all_cameras()
+    result = invoke_from_view3d(bpy.ops.render.render_all_cameras)
     assert_true(result == {"RUNNING_MODAL"}, f"Cancel batch did not start: {result}")
     assert_true(
-        bpy.ops.render.cancel_all_cameras() == {"FINISHED"},
+        invoke_from_view3d(bpy.ops.render.cancel_all_cameras) == {"FINISHED"},
         "Cancel request was rejected",
     )
     assert_true(runtime_state.render_event is None, "Cancel request forged a render event")
@@ -163,7 +169,7 @@ def poll() -> float | None:
         elapsed = time.monotonic() - started_at
         max_window_count = max(max_window_count, len(bpy.context.window_manager.windows))
         if phase == "start_success":
-            result = bpy.ops.render.render_all_cameras()
+            result = invoke_from_view3d(bpy.ops.render.render_all_cameras)
             assert_true(result == {"RUNNING_MODAL"}, f"GUI batch did not start: {result}")
             assert_true(
                 bpy.context.preferences.view.render_display_type == "WINDOW",
