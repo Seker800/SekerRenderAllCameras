@@ -1,6 +1,6 @@
 # 分版本 Blender 适配与发布矩阵实施计划
 
-- 状态：ACTIVE
+- 状态：COMPLETED
 - 日期：2026-09-16
 - 目标版本：0.6.0
 - 入口：版本配置、Blender/Presentation 宿主适配、构建脚本、全量测试入口、发布门禁和安装文档
@@ -119,7 +119,7 @@
 - [x] M2 五目标构建与包级版本约束
 - [x] M3 五版本 GUI/宿主实现和真实渲染通过
 - [x] M4 本地安装态、发布门禁、文档和五包哈希完成
-- [ ] 创建提交、推送主分支、发布 GitHub Release 并完成线上哈希回读
+- [x] 创建提交、推送主分支、发布 GitHub Release 并完成线上哈希回读
 
 ## 发现与决策
 
@@ -133,4 +133,7 @@
 - 最终发布模式报告：`build/test-reports/20260916-122833-13012/summary.json`，63 项通过、0 项失败、0 项未运行。
 - 实测版本：Blender 4.0.2、4.1.1、4.2.0、4.5.13 LTS、5.2.1 LTS。
 - 五个目标包已完成确定性构建、目标清单校验、源码态后台/GUI 验收、50 Camera/连续十批压力烟测、相邻错包拒绝、隔离安装态完整四通道验收和跨版本契约比较。
-- 本地门禁已完成；计划在正式 Release、首页五下载链接和线上资产 SHA-256 回读全部成功后归档为 `COMPLETED`。
+- 本地门禁、正式 Release、首页五下载链接和线上资产 SHA-256 回读均已完成。
+- 发布提交与标签 `v0.6.0`：`d1b52f257b81ac5eaddbc4f53899c4a74025a367`；发布后的计划归档以独立文档提交进入 `main`。
+- 正式 Release：`https://github.com/Seker800/SekerRenderAllCameras/releases/tag/v0.6.0`，五个资产均已上传。
+- `python scripts/release_gate.py --verify-online` 已从 GitHub 下载五个资产并验证 SHA-256 与本地受测 ZIP 完全一致。
