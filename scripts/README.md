@@ -6,7 +6,7 @@
 
 存放可复现的测试、打包和本地开发入口。脚本必须支持非交互执行、正确退出码和明确工作目录；不得写入用户 Blender 配置、安装/升级 MCP 或覆盖 `.blend`，除非脚本名称和文档明确说明且由用户主动执行。
 
-- `build_extension.ps1`：使用 4.2+ Blender 校验并构建 Extension ZIP，同时从同一源码构建 4.0.2–4.1 Legacy Add-on ZIP。
+- `build_extension.ps1`：读取 `packaging/blender_targets.json`，从共享纯核心装配 4.0.2、4.1.1、4.2.0、4.5 LTS、5.2 LTS 五个独立 ZIP，并用各目标 Blender 校验 Extension 清单。
 - `build_legacy_package.py`：按固定顺序、时间戳和文件属性生成可重复构建的 Legacy ZIP。
 - `run_blender_tests.py`：在目标 Blender 中验证真实渲染、像素、取消、故障与恢复。
 - `run_blender_edge_cases.py`：验证预检、Camera/格式矩阵、Compositor、Render Border/Crop、文件名冲突与 `.blend` 不被保存。

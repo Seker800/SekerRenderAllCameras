@@ -20,6 +20,11 @@ Material ID 和 JSON 清单。
 > The repository source is currently **0.5.1**. A release is complete only after both links above
 > resolve to the matching Extension and Legacy assets in the latest GitHub Release.
 
+> **Development direction:** the next release no longer uses one universal Extension/Legacy pair.
+> It builds separate packages for Blender 4.0.2, 4.1.1, 4.2.0, 4.5 LTS, and 5.2 LTS; each package
+> has its own version bounds, host policy, installation test, GUI test, and checksum. The download
+> buttons above remain the currently published 0.5.1 assets until that release is published.
+
 ## Plugin at a glance
 
 [![Render All Cameras 0.5.1 plugin panel with visible version, Material ID, and camera environments](Docs/images/plugin-quick-start.jpg)](Docs/images/plugin-quick-start.jpg)
@@ -175,9 +180,9 @@ Object ID images, two Material ID images, `RenderInfo.json`, `ObjectID.json`, an
 | Cycles, EEVEE, Workbench | Beauty and auxiliary channels supported |
 | Third-party render engines | Beauty only by default |
 
-No maximum Blender version is declared. New Blender releases are intended to remain supported, but
-the tested versions above are the release gates. Blender 4.0.2–4.1 use the Legacy package because
-the official Extensions system begins with Blender 4.2.
+The current development build does not claim open-ended compatibility. Each supported line has a
+separate version-bounded package and release gate. Blender 4.0.2 and 4.1.1 use separate Legacy
+packages; 4.2.0, 4.5 LTS, and 5.2 LTS use separate Extensions.
 
 Object ID and Material ID do not currently include Volume objects. Animation, Cryptomatte,
 Multiview, multi-Scene queues, and distributed rendering are outside the first release.
