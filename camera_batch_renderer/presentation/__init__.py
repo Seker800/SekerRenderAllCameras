@@ -3,11 +3,28 @@ from __future__ import annotations
 import bpy
 
 from . import runtime_state
-from .operators import RAC_OT_cancel, RAC_OT_render_all, install_handlers, remove_handlers
-from .panel import RAC_PT_panel, RAC_PT_view3d_panel
-from .properties import RAC_Settings
+from .operators import (
+    RAC_OT_cancel,
+    RAC_OT_environment_pair_add,
+    RAC_OT_environment_pair_remove,
+    RAC_OT_render_all,
+    install_handlers,
+    remove_handlers,
+)
+from .panel import RAC_PT_panel, RAC_PT_view3d_panel, RAC_UL_environment_pairs
+from .properties import RAC_EnvironmentPair, RAC_Settings
 
-CLASSES = (RAC_Settings, RAC_OT_render_all, RAC_OT_cancel, RAC_PT_panel, RAC_PT_view3d_panel)
+CLASSES = (
+    RAC_EnvironmentPair,
+    RAC_Settings,
+    RAC_OT_environment_pair_add,
+    RAC_OT_environment_pair_remove,
+    RAC_OT_render_all,
+    RAC_OT_cancel,
+    RAC_UL_environment_pairs,
+    RAC_PT_panel,
+    RAC_PT_view3d_panel,
+)
 
 
 def register() -> None:

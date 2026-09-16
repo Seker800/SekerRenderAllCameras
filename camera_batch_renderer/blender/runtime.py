@@ -95,7 +95,7 @@ class BlenderBatchSession:
         progress = self.coordinator.snapshot()
         payload = {
             "schema_version": 2,
-            "addon_version": "0.3.0",
+            "addon_version": "0.4.1",
             "blender_version": bpy.app.version_string,
             "status": progress.status.value,
             "blend_file": str(self.coordinator.plan.blend_path),
@@ -116,7 +116,24 @@ class BlenderBatchSession:
             },
             "channels": [channel.value for channel in self.coordinator.plan.channels],
             "cameras": [
-                {"key": camera.key, "name": camera.display_name, "output_name": camera.output_name}
+                {
+                    "key": camera.key,
+                    "name": camera.display_name,
+                    "output_name": camera.output_name,
+                    "environment": (
+                        {
+                            "light_collection": camera.environment.light_collection_name,
+                            "light_count": (
+                                len(camera.environment.light_object_keys)
+                                if camera.environment.light_object_keys is not None
+                                else None
+                            ),
+                            "world": camera.environment.world_name,
+                        }
+                        if camera.environment is not None
+                        else None
+                    ),
+                }
                 for camera in self.coordinator.plan.cameras
             ],
             "known_limitations": [
@@ -162,6 +179,9 @@ def create_session(
     *,
     include_alpha: bool,
     include_object_id: bool,
+    environment_pairs: tuple[
+        tuple[bpy.types.Object | None, bpy.types.Collection | None, bpy.types.World | None], ...
+    ] = (),
 ) -> BlenderBatchSession:
     validate_scene(scene, include_alpha=include_alpha, include_object_id=include_object_id)
     output_directory = Path(bpy.data.filepath).parent / OUTPUT_DIRECTORY_NAME
@@ -173,6 +193,7 @@ def create_session(
             include_alpha=include_alpha,
             include_object_id=include_object_id,
             output_directory=allocation.directory,
+            environment_pairs=environment_pairs,
         )
         outputs = {
             (camera.key, channel): allocation.directory
@@ -189,12 +210,19 @@ def create_session(
             for channel in plan.channels
         }
         transaction = BlenderStateTransaction(scene).capture()
+        environments = {
+            camera.key: camera.environment
+            for camera in plan.cameras
+            if camera.environment is not None
+        }
         return BlenderBatchSession(
             scene=scene,
             allocation=allocation,
             staging_directory=staging_directory,
             coordinator=BatchCoordinator(plan, outputs),
-            adapter=BlenderRenderAdapter(scene, staging_directory),
+            adapter=BlenderRenderAdapter(
+                scene, staging_directory, transaction, environments
+            ),
             transaction=transaction,
             manifest=AtomicJsonWriter(
                 allocation.directory / f"{plan.blend_name}_RenderInfo.json"
@@ -215,11 +243,15 @@ def run_batch_sync(
     *,
     include_alpha: bool = False,
     include_object_id: bool = False,
+    environment_pairs: tuple[
+        tuple[bpy.types.Object | None, bpy.types.Collection | None, bpy.types.World | None], ...
+    ] = (),
 ) -> BlenderBatchSession:
     session = create_session(
         scene,
         include_alpha=include_alpha,
         include_object_id=include_object_id,
+        environment_pairs=environment_pairs,
     )
     try:
         session.start()

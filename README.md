@@ -1,7 +1,8 @@
 # Render All Cameras for Blender
 
 **One-click batch rendering for every camera in a Blender scene.** Render still images with
-automatic filenames, optional alpha masks, Object ID maps, and JSON manifests.
+automatic filenames, per-camera light/World environments, optional alpha masks, Object ID maps,
+and JSON manifests.
 
 一键逐个渲染 Blender 当前场景中的全部摄影机，并自动输出规范命名的静帧、Alpha、Object ID
 和 JSON 清单。
@@ -10,10 +11,14 @@ automatic filenames, optional alpha masks, Object ID maps, and JSON manifests.
 [![Download Legacy Add-on](https://img.shields.io/badge/Download-Legacy_4.0.2%E2%80%934.1-555555?style=for-the-badge&logo=blender&logoColor=white)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.2.1-legacy.zip)
 
 [![Latest release](https://img.shields.io/github/v/release/Seker800/SekerRenderAllCameras)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest)
+[![Current source](https://img.shields.io/badge/Current_source-0.4.1-2ea44f)](#whats-new-in-041-current-source)
 [![Blender 4.0.2+](https://img.shields.io/badge/Blender-4.0.2%2B-F5792A?logo=blender&logoColor=white)](#compatibility)
 [![License: GPL v3+](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](LICENSE)
 
 > Blender 4.2 or newer: **[download the Extension ZIP](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.2.1.zip)**. Blender 4.0.2–4.1: **[download the Legacy Add-on ZIP](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.2.1-legacy.zip)**. Do not unzip either package.
+>
+> The repository source is currently **0.4.1**. The buttons above intentionally keep pointing to
+> the latest published **0.2.1** release artifacts until a newer GitHub Release is published.
 
 ## Plugin at a glance
 
@@ -26,22 +31,35 @@ the fixed `SekerRenderAllCameras/` folder next to the saved `.blend`.
 中文：保存 `.blend`，在 3D 视图按 <kbd>N</kbd>，打开 **Batch Render**；按需勾选 Alpha / Object ID，
 然后点击 **Render All Cameras**。点击截图可查看原始大图。
 
-## What's new in 0.3.0
+## What's new in 0.4.1 (current source)
 
-- Batch IDs and `001`, `002`, … subfolders are gone.
-- Every run uses the same `SekerRenderAllCameras/` folder beside the `.blend`.
-- A successfully rendered file replaces the old file with the same name. Old files that were not
-  generated in the current run stay in place.
-- Existing legacy `RenderOutput/` folders are left untouched; the plugin does not migrate or delete
-  previous renders.
+- Pair any camera with an optional light Collection, an optional Blender World, or both.
+- Selecting a pairing immediately previews its camera, light rig, and World in the current scene.
+- While a paired camera renders, only lights inside its paired Collection (including child
+  Collections) are enabled; other scene lights are temporarily ignored. A paired Collection may be
+  hidden or excluded before the run—the plugin reveals it when needed and restores that state later.
+- Unpaired cameras keep the scene state captured at batch start. All render-time visibility and
+  World changes are restored after completion, cancellation, or failure.
+- Output still uses the fixed `SekerRenderAllCameras/` folder: new matching images replace old ones,
+  while images not generated in the current run remain untouched.
 
-中文：0.3.0 不再生成批次编号和数字子目录。新图成功后覆盖同名旧图，本轮没有生成的旧图继续
-保留；以前的 `RenderOutput/` 目录不会被自动移动或删除。
+中文：0.4.1 中选中不同配对行会立即切换摄影机、灯组和 World。灯光 Collection 即使事先被隐藏或从 View Layer 排除，渲染时也会自动启用，完成、取消或失败后恢复任务开始时的状态。
+
+### Verified in Blender
+
+The 0.4.1 environment workflow was exercised in Blender 5.2.1 with two cameras, two initially
+hidden and View Layer-excluded light Collections, and two different Worlds. The real EEVEE run
+produced two distinct PNGs, recorded each Camera/Collection/World combination in `RenderInfo.json`,
+and restored the original camera, World, Collection, View Layer, and light visibility afterward.
+The GUI regression run also completed a three-camera queue without stopping after the first image.
+
+中文：上述配对并非只做了代码测试；项目已在 Blender 5.2.1 中实际创建场景、连续渲染并检查导出图片、RenderInfo 与渲染后的状态恢复。
 
 ## Why use it?
 
 - Render every camera in the current Scene with one click—built for still images, not animation.
 - Keep the current Blender render settings for Beauty output.
+- Give each camera its own light Collection and World without duplicating the scene.
 - Add an optional lossless grayscale Alpha mask for each camera.
 - Add an optional exact-color Object ID map plus a machine-readable color mapping JSON.
 - Name files from the `.blend` file, camera, channel, resolution, and render engine.
@@ -80,7 +98,15 @@ ProductShot_ObjectID.json
 2. Put the mouse over the 3D Viewport and press <kbd>N</kbd>.
 3. Open **Batch Render → Render All Cameras**.
 4. Enable Alpha and/or Object ID if needed.
-5. Click **Render All Cameras**.
+5. Optional: under **Camera Environments**, press **+**, choose a Camera, then choose a Light
+   Collection and/or World. Child Collections are included automatically.
+6. Click **Render All Cameras**.
+
+Leave **Light Collection** blank to keep all scene lights. Leave **World** blank to keep the scene
+World. A paired light Collection must belong to the current Scene; it may start hidden or excluded.
+Each camera can have at most one pairing; unpaired cameras use the state captured at batch start.
+Linked-library lights need editable library overrides because the plugin must temporarily change
+their render visibility.
 
 The same controls are also available under **Output Properties → Render All Cameras**. Results are
 written next to the `.blend` file:
@@ -133,12 +159,14 @@ python -m unittest discover -s tests/unit -v
 python -m unittest discover -s tests/architecture -v
 uvx ruff check camera_batch_renderer tests scripts
 blender --background --factory-startup --python scripts/run_blender_tests.py
+blender --background --factory-startup --python scripts/run_environment_pair_acceptance.py
 powershell -ExecutionPolicy Bypass -File scripts/build_extension.ps1
 ```
 
-The test suite covers naming, natural camera order, fixed-folder preservation and manifests, state
-restoration, cancellation, handled failures, Alpha/Object ID pixels, Blender 4.0.2/4.1/4.2/4.5/5.2
-integration, both package formats, installed-package rendering, and UI registration.
+The test suite covers naming, natural camera order, per-camera light/World switching, fixed-folder
+preservation and manifests, state restoration, cancellation, handled failures, Alpha/Object ID
+pixels, Blender 4.0.2/4.1/4.2/4.5/5.2 integration, both package formats,
+installed-package rendering, and UI registration.
 
 Architecture and implementation documentation lives in [`Docs/`](Docs/README.md). The original
 product scope is recorded in [`PLAN.md`](PLAN.md).

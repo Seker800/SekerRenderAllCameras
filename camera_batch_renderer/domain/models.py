@@ -27,10 +27,20 @@ class ResultStatus(StrEnum):
 
 
 @dataclass(frozen=True, slots=True)
+class CameraEnvironmentSpec:
+    light_collection_name: str | None = None
+    light_collection_key: str | None = None
+    light_object_keys: tuple[str, ...] | None = None
+    world_key: str | None = None
+    world_name: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class CameraSpec:
     key: str
     display_name: str
     output_name: str
+    environment: CameraEnvironmentSpec | None = None
 
 
 @dataclass(frozen=True, slots=True)

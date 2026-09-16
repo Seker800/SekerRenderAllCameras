@@ -45,6 +45,41 @@ def remove_handlers() -> None:
             handlers.remove(callback)
 
 
+class RAC_OT_environment_pair_add(bpy.types.Operator):
+    bl_idname = "render.camera_environment_pair_add"
+    bl_label = "Add Camera Environment"
+    bl_description = "Pair a camera with an optional light collection and World"
+
+    @classmethod
+    def poll(cls, _context: bpy.types.Context) -> bool:
+        return runtime_state.active_session is None
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        settings = context.scene.rac_settings
+        settings.environment_pairs.add()
+        settings.environment_pair_index = len(settings.environment_pairs) - 1
+        return {"FINISHED"}
+
+
+class RAC_OT_environment_pair_remove(bpy.types.Operator):
+    bl_idname = "render.camera_environment_pair_remove"
+    bl_label = "Remove Camera Environment"
+    bl_description = "Remove the selected camera environment pairing"
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        return runtime_state.active_session is None and bool(
+            context.scene.rac_settings.environment_pairs
+        )
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        settings = context.scene.rac_settings
+        index = min(settings.environment_pair_index, len(settings.environment_pairs) - 1)
+        settings.environment_pairs.remove(index)
+        settings.environment_pair_index = max(0, min(index, len(settings.environment_pairs) - 1))
+        return {"FINISHED"}
+
+
 class RAC_OT_render_all(bpy.types.Operator):
     bl_idname = "render.render_all_cameras"
     bl_label = "Render All Cameras"
@@ -63,6 +98,10 @@ class RAC_OT_render_all(bpy.types.Operator):
                 context.scene,
                 include_alpha=settings.include_alpha,
                 include_object_id=settings.include_object_id,
+                environment_pairs=tuple(
+                    (item.camera, item.light_collection, item.world)
+                    for item in settings.environment_pairs
+                ),
             )
             runtime_state.active_session = session
             runtime_state.active_operator = self

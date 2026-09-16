@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 import bpy
 
-from ..domain import Channel, RenderPlan, RenderSettings
+from ..domain import CameraEnvironmentSpec, Channel, RenderPlan, RenderSettings
 from ..domain.naming import camera_specs
+from .environment import collection_lights, id_key, scene_collection_path
 
 SUPPORTED_FORMATS = {"PNG", "JPEG", "TIFF", "OPEN_EXR", "OPEN_EXR_MULTILAYER"}
 AUXILIARY_ENGINES = {
@@ -17,8 +19,60 @@ AUXILIARY_ENGINES = {
 
 
 def camera_key(camera: bpy.types.Object) -> str:
-    library = camera.library.filepath if camera.library else "local"
-    return f"{library}|{camera.name_full}"
+    return id_key(camera)
+
+
+def _environment_specs(
+    scene: bpy.types.Scene,
+    environment_pairs: tuple[
+        tuple[bpy.types.Object | None, bpy.types.Collection | None, bpy.types.World | None], ...
+    ],
+) -> dict[str, CameraEnvironmentSpec]:
+    scene_cameras = {id_key(obj): obj for obj in scene.objects if obj.type == "CAMERA"}
+    light_objects = tuple(obj for obj in scene.objects if obj.type == "LIGHT")
+    scene_lights = {id_key(obj) for obj in light_objects}
+    result: dict[str, CameraEnvironmentSpec] = {}
+    for camera, collection, world in environment_pairs:
+        if camera is None:
+            continue
+        key = id_key(camera)
+        if key not in scene_cameras:
+            raise ValueError(f'Paired camera is not in the current scene: "{camera.name}"')
+        if key in result:
+            raise ValueError(f'Camera has more than one environment pairing: "{camera.name}"')
+        if collection is None and world is None:
+            continue
+        light_keys = None
+        collection_name = None
+        if collection is not None:
+            non_editable = next((obj for obj in light_objects if not obj.is_editable), None)
+            if non_editable is not None:
+                raise ValueError(
+                    "Light isolation requires editable lights; create a library override for "
+                    f'"{non_editable.name}"'
+                )
+            collection_key = id_key(collection)
+            path = scene_collection_path(scene.collection, collection_key)
+            if path is None:
+                raise ValueError(
+                    f'Paired light collection is not in the current scene: "{collection.name}"'
+                )
+            collection_name = collection.name
+            light_keys = tuple(
+                id_key(light)
+                for light in collection_lights(collection)
+                if id_key(light) in scene_lights
+            )
+        else:
+            collection_key = None
+        result[key] = CameraEnvironmentSpec(
+            light_collection_name=collection_name,
+            light_collection_key=collection_key,
+            light_object_keys=light_keys,
+            world_key=id_key(world) if world is not None else None,
+            world_name=world.name if world is not None else None,
+        )
+    return result
 
 
 def _samples(scene: bpy.types.Scene) -> int | None:
@@ -46,10 +100,18 @@ def build_render_plan(
     include_alpha: bool,
     include_object_id: bool,
     output_directory: Path,
+    environment_pairs: tuple[
+        tuple[bpy.types.Object | None, bpy.types.Collection | None, bpy.types.World | None], ...
+    ] = (),
 ) -> RenderPlan:
     validate_scene(scene, include_alpha=include_alpha, include_object_id=include_object_id)
+    environments = _environment_specs(scene, environment_pairs)
     cameras = camera_specs(
         (camera_key(obj), obj.name) for obj in scene.objects if obj.type == "CAMERA"
+    )
+    cameras = tuple(
+        replace(camera, environment=environments.get(camera.key))
+        for camera in cameras
     )
     scale = scene.render.resolution_percentage / 100.0
     channels = [Channel.BEAUTY]

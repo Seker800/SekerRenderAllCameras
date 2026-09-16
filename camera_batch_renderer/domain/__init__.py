@@ -2,6 +2,7 @@
 
 from .models import (
     BatchStatus,
+    CameraEnvironmentSpec,
     CameraSpec,
     Channel,
     ChannelResult,
@@ -13,6 +14,7 @@ from .models import (
 
 __all__ = [
     "BatchStatus",
+    "CameraEnvironmentSpec",
     "CameraSpec",
     "Channel",
     "ChannelResult",

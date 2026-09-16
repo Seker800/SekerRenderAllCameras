@@ -10,3 +10,4 @@
 - `run_blender_tests.py`：在目标 Blender 中验证真实渲染、像素、取消、故障与恢复。
 - `test_legacy_install.py`：在隔离的 Blender 用户脚本目录中验证 Legacy 包安装、启用、面板、禁用与清理。
 - `run_installed_demo.py`：针对已安装 Extension 运行演示场景端到端验收。
+- `run_environment_pair_acceptance.py`：创建两 Camera、两套隐藏/排除灯组与两个 World 的 EEVEE 真实场景，实际导出 Beauty，检查图片色彩、RenderInfo 和宿主状态恢复。验收产物保留在 `build/environment-pair-acceptance/`。

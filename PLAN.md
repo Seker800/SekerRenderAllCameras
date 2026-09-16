@@ -50,6 +50,7 @@
 - Object ID 颜色与实例映射 JSON。
 - 正常、取消及异常路径的统一清理。
 - Blender Extension ZIP 构建和验证。
+- 后续 0.4.0 扩展：Camera 可选配对 Light Collection 和 World，渲染时临时切换并完整恢复。
 
 ### 3.2 不包含
 
@@ -72,6 +73,7 @@
 - `输出 Object ID`：默认关闭。
 - `输出目录`：只读显示 `//SekerRenderAllCameras/`。
 - `摄影机数量`与`预计文件数量`。
+- `Camera Environments`：可添加/删除 Camera + Light Collection + World 配对；Light/World 均可留空以继承 Scene 默认。
 
 ### 4.2 执行区
 
@@ -395,6 +397,7 @@ IDLE
 Beauty 原场景需要保存并恢复：
 
 - 原活动摄影机；
+- 原 World 与所有被任务触及的 Light `hide_render`；
 - 原当前帧；
 - 原渲染输出路径及相关图像设置中确实被临时改变的字段；
 - 原界面锁定状态；
@@ -624,6 +627,7 @@ Extension ZIP 必须在 Blender 4.2+ 完成官方验证与安装态测试；同�
 12. 插件不主动保存 `.blend`，不永久修改原对象材质、颜色或 Pass Index。
 13. 只有本轮成功生成的同名输出会覆盖旧文件，其他已有文件不受影响。
 14. Extension ZIP 在 4.2+ 通过官方验证并安装运行，Legacy ZIP 在 4.0.2–4.1 安装运行。
+15. 有配对的 Camera 只使用指定 Light Collection/World，未配对 Camera 使用 Scene 默认，任务结束后原环境完整恢复。
 
 ## 21. 开发阶段
 

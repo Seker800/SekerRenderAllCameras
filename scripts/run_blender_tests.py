@@ -13,6 +13,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 import camera_batch_renderer  # noqa: E402
+from camera_batch_renderer.blender.environment import id_key, layer_collections  # noqa: E402
 from camera_batch_renderer.blender.runtime import create_session, run_batch_sync  # noqa: E402
 
 
@@ -66,6 +67,36 @@ def main() -> None:
             camera.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
             camera_objects.append(camera)
         scene.camera = camera_objects[0]
+        light_collections = []
+        light_objects = []
+        worlds = []
+        for index in range(2):
+            parent = bpy.data.collections.new(f"Light Rig {index + 1}")
+            child = bpy.data.collections.new(f"Light Rig {index + 1} Child")
+            scene.collection.children.link(parent)
+            parent.children.link(child)
+            light_data = bpy.data.lights.new(f"Rig Light {index + 1}", type="POINT")
+            light = bpy.data.objects.new(f"Rig Light {index + 1}", light_data)
+            child.objects.link(light)
+            light.hide_render = index == 1
+            world = bpy.data.worlds.new(f"Camera World {index + 1}")
+            light_collections.append(parent)
+            light_objects.append(light)
+            worlds.append(world)
+        original_world = scene.world
+        original_light_states = tuple(light.hide_render for light in light_objects)
+        original_light_viewport_states = tuple(light.hide_viewport for light in light_objects)
+        rig_two_layer = next(
+            item
+            for item in layer_collections(scene.view_layers[0])
+            if id_key(item.collection) == id_key(light_collections[1])
+        )
+        light_collections[1].hide_render = True
+        rig_two_layer.exclude = True
+        environment_pairs = tuple(
+            (camera_objects[index], light_collections[index], worlds[index])
+            for index in range(2)
+        )
         original_camera = scene.camera
         original_filepath = scene.render.filepath
         fixture = temporary / "M2 Fixture.blend"
@@ -81,7 +112,126 @@ def main() -> None:
         assert_true(RAC_PT_panel.is_registered, "Output Properties panel not registered")
         assert_true(RAC_PT_view3d_panel.is_registered, "3D Viewport N-panel not registered")
         assert_true(RAC_PT_view3d_panel.bl_category == "Batch Render", "N-panel tab is wrong")
-        session = run_batch_sync(scene, include_alpha=True, include_object_id=True)
+        settings = scene.rac_settings
+        assert_true(
+            bpy.ops.render.camera_environment_pair_add() == {"FINISHED"},
+            "Environment pair add operator failed",
+        )
+        settings.environment_pairs[0].camera = camera_objects[0]
+        settings.environment_pairs[0].light_collection = light_collections[0]
+        settings.environment_pairs[0].world = worlds[0]
+        assert_true(scene.camera == camera_objects[0], "Pair edit did not preview its camera")
+        assert_true(scene.world == worlds[0], "Pair edit did not preview its World")
+        assert_true(not light_objects[0].hide_viewport, "Preview hid the paired light")
+        assert_true(light_objects[1].hide_viewport, "Preview kept an unpaired light visible")
+        assert_true(
+            bpy.ops.render.camera_environment_pair_add() == {"FINISHED"},
+            "Second environment pair add failed",
+        )
+        settings.environment_pairs[1].camera = camera_objects[1]
+        settings.environment_pairs[1].light_collection = light_collections[1]
+        settings.environment_pairs[1].world = worlds[1]
+        assert_true(scene.camera == camera_objects[1], "Active pair did not switch the camera")
+        assert_true(scene.world == worlds[1], "Active pair did not switch the World")
+        assert_true(not rig_two_layer.exclude, "Preview did not reveal an excluded light rig")
+        assert_true(
+            not light_collections[1].hide_render,
+            "Preview did not reveal a render-hidden light rig",
+        )
+        assert_true(light_objects[0].hide_viewport, "Preview kept the other rig visible")
+        assert_true(not light_objects[1].hide_viewport, "Preview hid the selected rig")
+        assert_true(
+            light_collections[0].hide_render,
+            "Preview did not disable the other paired collection",
+        )
+        assert_true(
+            not light_objects[0].visible_get(view_layer=scene.view_layers[0]),
+            "Preview eye visibility kept the other rig visible",
+        )
+        assert_true(
+            light_objects[1].visible_get(view_layer=scene.view_layers[0]),
+            "Preview eye visibility hid the selected rig",
+        )
+        settings.environment_pair_index = 0
+        assert_true(scene.camera == camera_objects[0], "Pair row selection did not switch camera")
+        assert_true(scene.world == worlds[0], "Pair row selection did not switch World")
+        assert_true(
+            not light_collections[0].hide_render,
+            "Pair row selection did not enable its light collection",
+        )
+        assert_true(
+            light_collections[1].hide_render and rig_two_layer.exclude,
+            "Pair row selection did not disable the previous light collection",
+        )
+        assert_true(
+            bpy.ops.render.camera_environment_pair_remove() == {"FINISHED"},
+            "Environment pair remove operator failed",
+        )
+        assert_true(
+            bpy.ops.render.camera_environment_pair_remove() == {"FINISHED"},
+            "Second environment pair remove failed",
+        )
+        scene.camera = original_camera
+        scene.world = original_world
+        for light, hide_render, hide_viewport in zip(
+            light_objects,
+            original_light_states,
+            original_light_viewport_states,
+            strict=True,
+        ):
+            light.hide_render = hide_render
+            light.hide_viewport = hide_viewport
+        light_collections[1].hide_render = True
+        rig_two_layer.exclude = True
+
+        switching = create_session(
+            scene,
+            include_alpha=False,
+            include_object_id=False,
+            environment_pairs=(environment_pairs[1],),
+        )
+        switching.start()
+        switching.prepare_current()
+        assert_true(scene.world == worlds[1], "Camera 2 did not switch to its paired World")
+        assert_true(light_objects[0].hide_render, "Unpaired light was not disabled")
+        assert_true(not light_objects[1].hide_render, "Paired light was not enabled")
+        assert_true(not rig_two_layer.exclude, "Render did not reveal the excluded light rig")
+        assert_true(
+            not light_collections[1].hide_render,
+            "Render did not reveal the hidden light collection",
+        )
+        switching.adapter.render_sync()
+        switching.complete_current()
+        switching.prepare_current()
+        assert_true(scene.world == original_world, "Unpaired camera did not restore scene World")
+        assert_true(
+            tuple(light.hide_render for light in light_objects) == original_light_states,
+            "Unpaired camera did not restore the scene light setup",
+        )
+        assert_true(rig_two_layer.exclude, "Unpaired camera did not restore layer exclusion")
+        assert_true(
+            light_collections[1].hide_render,
+            "Unpaired camera did not restore collection render visibility",
+        )
+        switching.cancel()
+        switching.finish()
+        assert_true(scene.world == original_world, "Cancelled pairing did not restore World")
+        assert_true(
+            tuple(light.hide_render for light in light_objects) == original_light_states,
+            "Cancelled pairing did not restore light visibility",
+        )
+        assert_true(rig_two_layer.exclude, "Cancellation did not restore layer exclusion")
+        assert_true(
+            light_collections[1].hide_render,
+            "Cancellation did not restore collection visibility",
+        )
+
+        session = run_batch_sync(
+            scene,
+            include_alpha=True,
+            include_object_id=True,
+            environment_pairs=environment_pairs,
+        )
         progress = session.coordinator.snapshot()
         assert_true(progress.status.value == "completed", "Batch did not complete")
         assert_true(len(progress.results) == 6, "Expected six channel results")
@@ -89,11 +239,34 @@ def main() -> None:
         assert_true(progress.results[0].camera_name == "Camera 2", "Natural order is wrong")
         assert_true(scene.camera == original_camera, "Active camera was not restored")
         assert_true(scene.render.filepath == original_filepath, "Render filepath was not restored")
+        assert_true(scene.world == original_world, "World was not restored")
+        assert_true(
+            tuple(light.hide_render for light in light_objects) == original_light_states,
+            "Light visibility was not restored",
+        )
+        assert_true(rig_two_layer.exclude, "Batch did not restore layer exclusion")
+        assert_true(
+            light_collections[1].hide_render,
+            "Batch did not restore collection visibility",
+        )
         assert_true(tuple(cube.color) == original_cube_color, "Original object color changed")
         assert_true(not session.allocation.marker.exists(), "Progress marker was not removed")
         assert_true(
             len(list(session.allocation.directory.glob("*_RenderInfo.json"))) == 1,
             "Manifest missing",
+        )
+        render_info = next(session.allocation.directory.glob("*_RenderInfo.json"))
+        render_payload = json.loads(render_info.read_text(encoding="utf-8"))
+        environments = {
+            item["name"]: item["environment"] for item in render_payload["cameras"]
+        }
+        assert_true(
+            environments["Camera 2"] == {
+                "light_collection": "Light Rig 2",
+                "light_count": 1,
+                "world": "Camera World 2",
+            },
+            "RenderInfo did not record the paired environment",
         )
         assert_true(
             session.allocation.directory == temporary / "SekerRenderAllCameras",
@@ -175,6 +348,23 @@ def main() -> None:
             "Cancelled batch marker missing",
         )
         assert_true(scene.camera == original_camera, "Cancellation did not restore camera")
+        assert_true(scene.world == original_world, "Cancellation did not restore World")
+        assert_true(
+            tuple(light.hide_render for light in light_objects) == original_light_states,
+            "Cancellation did not restore light visibility",
+        )
+
+        try:
+            create_session(
+                scene,
+                include_alpha=False,
+                include_object_id=False,
+                environment_pairs=(environment_pairs[0], environment_pairs[0]),
+            )
+        except ValueError as exc:
+            assert_true("more than one" in str(exc), "Duplicate pairing error is unclear")
+        else:
+            raise AssertionError("Duplicate camera pairing was accepted")
 
         from camera_batch_renderer.presentation import runtime_state  # noqa: PLC0415
 
@@ -198,9 +388,15 @@ def main() -> None:
         button_cancelled.finish()
         runtime_state.clear()
 
-        failed = create_session(scene, include_alpha=False, include_object_id=False)
+        failed = create_session(
+            scene,
+            include_alpha=False,
+            include_object_id=False,
+            environment_pairs=environment_pairs,
+        )
         failed.start()
         failed.prepare_current()
+        assert_true(scene.world == worlds[1], "Failure fixture did not apply paired World")
         failed.fail("injected failure")
         failed.finish()
         failed_info = next(failed.allocation.directory.glob("*_RenderInfo.json"))
@@ -209,6 +405,16 @@ def main() -> None:
         assert_true(failed_payload["schema_version"] == 2, "RenderInfo schema was not upgraded")
         assert_true("batch" not in failed_payload, "Removed batch field leaked into RenderInfo")
         assert_true(scene.render.filepath == original_filepath, "Failure did not restore filepath")
+        assert_true(scene.world == original_world, "Failure did not restore World")
+        assert_true(
+            tuple(light.hide_render for light in light_objects) == original_light_states,
+            "Failure did not restore light visibility",
+        )
+        assert_true(rig_two_layer.exclude, "Failure did not restore layer exclusion")
+        assert_true(
+            light_collections[1].hide_render,
+            "Failure did not restore collection visibility",
+        )
         assert_true(
             not any(
                 path.name.startswith(".staging-")

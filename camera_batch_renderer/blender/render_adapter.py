@@ -6,7 +6,7 @@ from pathlib import Path
 import bpy
 
 from ..application import RenderAction
-from ..domain import Channel
+from ..domain import CameraEnvironmentSpec, Channel
 from .auxiliary import (
     AlphaScene,
     ObjectIdScene,
@@ -15,10 +15,17 @@ from .auxiliary import (
     save_file_alpha,
 )
 from .scene_reader import camera_key
+from .state_transaction import BlenderStateTransaction
 
 
 class BlenderRenderAdapter:
-    def __init__(self, scene: bpy.types.Scene, staging_directory: Path):
+    def __init__(
+        self,
+        scene: bpy.types.Scene,
+        staging_directory: Path,
+        transaction: BlenderStateTransaction,
+        environments: dict[str, CameraEnvironmentSpec],
+    ):
         self.scene = scene
         self.staging_directory = staging_directory
         self.render_scene = scene
@@ -26,12 +33,15 @@ class BlenderRenderAdapter:
         self.id_colors = ()
         self.id_skipped: list[dict[str, str]] = []
         self.last_beauty_path = None
+        self.transaction = transaction
+        self.environments = environments
 
     def prepare(self, action: RenderAction) -> bool:
         self.cleanup_auxiliary()
         staging_path = self.staging_path(action)
         staging_path.unlink(missing_ok=True)
         camera = self.find_camera(action.camera_key)
+        self.transaction.apply_environment(self.environments.get(action.camera_key))
         if action.channel is Channel.BEAUTY:
             self.scene.camera = camera
             self.scene.render.filepath = str(staging_path)

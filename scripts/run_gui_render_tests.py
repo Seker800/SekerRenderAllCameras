@@ -27,6 +27,9 @@ phase = "start_success"
 max_window_count = 0
 original_camera = None
 original_filepath = ""
+original_world = None
+environment_lights = []
+original_light_states = ()
 
 
 def assert_true(condition: bool, message: str) -> None:
@@ -35,7 +38,7 @@ def assert_true(condition: bool, message: str) -> None:
 
 
 def prepare_scene() -> None:
-    global original_camera, original_filepath
+    global original_camera, original_filepath, original_world, original_light_states
     bpy.ops.wm.read_factory_settings(use_empty=True)
     scene = bpy.context.scene
     scene.render.engine = "BLENDER_WORKBENCH"
@@ -55,8 +58,28 @@ def prepare_scene() -> None:
             scene.camera = camera
     original_camera = scene.camera
     original_filepath = scene.render.filepath
+    original_world = scene.world
+    light_collection = bpy.data.collections.new("GUI Camera Light Rig")
+    scene.collection.children.link(light_collection)
+    for index in range(2):
+        light_data = bpy.data.lights.new(f"GUI Light {index + 1}", type="POINT")
+        light = bpy.data.objects.new(f"GUI Light {index + 1}", light_data)
+        if index:
+            scene.collection.objects.link(light)
+        else:
+            light_collection.objects.link(light)
+        light.hide_render = index == 1
+        environment_lights.append(light)
+    original_light_states = tuple(light.hide_render for light in environment_lights)
+    paired_world = bpy.data.worlds.new("GUI Camera World")
     bpy.ops.wm.save_as_mainfile(filepath=str(temporary / "GUI Fixture.blend"))
     camera_batch_renderer.register()
+    pair = scene.rac_settings.environment_pairs.add()
+    pair.camera = scene.camera
+    pair.light_collection = light_collection
+    pair.world = paired_world
+    original_world = scene.world
+    original_light_states = tuple(light.hide_render for light in environment_lights)
     bpy.context.preferences.view.render_display_type = "WINDOW"
     bpy.app.handlers.render_complete.remove(_render_complete)
 
@@ -73,6 +96,11 @@ def validate_result() -> None:
     assert_true(len(payload["results"]) == 3, "GUI results were not fully recorded")
     assert_true(scene.camera == original_camera, "GUI test did not restore active camera")
     assert_true(scene.render.filepath == original_filepath, "GUI test did not restore filepath")
+    assert_true(scene.world == original_world, "GUI test did not restore World")
+    assert_true(
+        tuple(light.hide_render for light in environment_lights) == original_light_states,
+        "GUI test did not restore light visibility",
+    )
     assert_true(
         bpy.context.preferences.view.render_display_type == "WINDOW",
         "GUI test changed the render display preference",
@@ -104,6 +132,11 @@ def validate_cancel_result() -> None:
     assert_true(len(payload["results"]) == 1, "GUI cancel did not finish the current image")
     assert_true(len(images) == 3, "GUI cancel removed old images that were not regenerated")
     assert_true((output / ".incomplete").is_file(), "GUI cancel marker is missing")
+    assert_true(bpy.context.scene.world == original_world, "GUI cancel did not restore World")
+    assert_true(
+        tuple(light.hide_render for light in environment_lights) == original_light_states,
+        "GUI cancel did not restore light visibility",
+    )
     assert_true(
         bpy.context.preferences.view.render_display_type == "WINDOW",
         "GUI cancel changed the render display preference",

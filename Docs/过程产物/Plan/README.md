@@ -4,6 +4,7 @@
 
 ## 当前执行
 
+- `COMPLETED`：[`COMPLETED-摄影机灯光与World环境配对.md`](COMPLETED-摄影机灯光与World环境配对.md) — 为摄影机配对灯光 Collection 和 World，渲染时隔离切换并完整恢复。
 - `COMPLETED`：[`COMPLETED-固定输出目录与覆盖语义.md`](COMPLETED-固定输出目录与覆盖语义.md) — 移除批次 ID/数字目录，改为 `.blend` 旁固定输出目录与“新图覆盖、未生成旧图保留”语义。
 - `COMPLETED`：[`COMPLETED-Blender-4.0.2兼容.md`](COMPLETED-Blender-4.0.2兼容.md) — Python 3.10/Blender 4.0 API 兼容、双安装包与版本矩阵验证。
 - `COMPLETED`：[`COMPLETED-首版完整实现.md`](COMPLETED-首版完整实现.md) — 首版插件的分层实现、里程碑、验证与发布结果。
