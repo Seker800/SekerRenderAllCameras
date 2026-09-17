@@ -6,6 +6,7 @@ from .host_drivers import ModalEventDriver
 
 TARGET_ID = "development"
 SUPPORTED_VERSION_MIN = (4, 0, 2)
+TARGET_LABEL = "4.0.2+"
 SUPPORTED_VERSION_MAX = None
 HOST_DRIVER_CLASS = ModalEventDriver
 OPERATOR_START_RESULT = {"RUNNING_MODAL"}

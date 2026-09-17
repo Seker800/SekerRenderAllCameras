@@ -15,6 +15,7 @@ def configure_panel() -> bpy.types.Area:
     if not hasattr(scene, "rac_settings"):
         bpy.ops.preferences.addon_enable(module="bl_ext.user_default.camera_batch_renderer")
     settings = scene.rac_settings
+    settings.include_beauty = True
     settings.include_alpha = True
     settings.include_object_id = True
     settings.include_material_id = True

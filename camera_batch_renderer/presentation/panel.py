@@ -5,6 +5,9 @@ import bpy
 from ..domain.naming import OUTPUT_DIRECTORY_NAME
 from ..version import VERSION_TEXT
 from . import runtime_state
+from .host_policy import TARGET_LABEL
+
+DISPLAY_NAME = f"Render All Cameras {VERSION_TEXT} (Blender {TARGET_LABEL})"
 
 
 class RAC_UL_environment_pairs(bpy.types.UIList):
@@ -60,9 +63,11 @@ def draw_controls(layout: bpy.types.UILayout, context: bpy.types.Context) -> Non
     settings = context.scene.rac_settings
     session = runtime_state.active_session
     row = layout.row(align=True)
+    row.prop(settings, "include_beauty")
     row.prop(settings, "include_alpha")
+    row = layout.row(align=True)
     row.prop(settings, "include_object_id")
-    layout.prop(settings, "include_material_id")
+    row.prop(settings, "include_material_id")
     draw_environment_pairs(layout, settings, enabled=session is None)
     if session is None:
         layout.operator("render.render_all_cameras", icon="RENDER_STILL")
@@ -73,11 +78,11 @@ def draw_controls(layout: bpy.types.UILayout, context: bpy.types.Context) -> Non
         else:
             layout.operator("render.cancel_all_cameras", icon="CANCEL")
     layout.label(text=f"Output: //{OUTPUT_DIRECTORY_NAME}/", icon="FILE_FOLDER")
-    layout.label(text=f"Version {VERSION_TEXT}", icon="INFO")
+    layout.label(text=f"Version {VERSION_TEXT} · Blender {TARGET_LABEL}", icon="INFO")
 
 
 class RAC_PT_panel(bpy.types.Panel):
-    bl_label = "Render All Cameras"
+    bl_label = DISPLAY_NAME
     bl_idname = "RAC_PT_render_all_cameras"
     bl_space_type = "PROPERTIES"
     bl_region_type = "WINDOW"
@@ -88,7 +93,7 @@ class RAC_PT_panel(bpy.types.Panel):
 
 
 class RAC_PT_view3d_panel(bpy.types.Panel):
-    bl_label = "Render All Cameras"
+    bl_label = DISPLAY_NAME
     bl_idname = "RAC_PT_view3d_render_all_cameras"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"

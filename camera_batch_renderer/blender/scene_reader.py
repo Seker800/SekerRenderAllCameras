@@ -85,10 +85,13 @@ def _samples(scene: bpy.types.Scene) -> int | None:
 def validate_scene(
     scene: bpy.types.Scene,
     *,
-    include_alpha: bool,
-    include_object_id: bool,
+    include_beauty: bool = True,
+    include_alpha: bool = False,
+    include_object_id: bool = False,
     include_material_id: bool = False,
 ) -> None:
+    if not any((include_beauty, include_alpha, include_object_id, include_material_id)):
+        raise ValueError("Select at least one output: Beauty, Alpha, Object ID, or Material ID")
     if not bpy.data.filepath:
         raise ValueError("Save the .blend file before rendering")
     if scene.render.image_settings.file_format not in SUPPORTED_FORMATS:
@@ -108,8 +111,9 @@ def validate_scene(
 def build_render_plan(
     scene: bpy.types.Scene,
     *,
-    include_alpha: bool,
-    include_object_id: bool,
+    include_beauty: bool = True,
+    include_alpha: bool = False,
+    include_object_id: bool = False,
     include_material_id: bool = False,
     output_directory: Path,
     environment_pairs: tuple[
@@ -118,6 +122,7 @@ def build_render_plan(
 ) -> RenderPlan:
     validate_scene(
         scene,
+        include_beauty=include_beauty,
         include_alpha=include_alpha,
         include_object_id=include_object_id,
         include_material_id=include_material_id,
@@ -142,7 +147,9 @@ def build_render_plan(
             1,
             round(height * (scene.render.border_max_y - scene.render.border_min_y)),
         )
-    channels = [Channel.BEAUTY]
+    channels = []
+    if include_beauty:
+        channels.append(Channel.BEAUTY)
     if include_alpha:
         channels.append(Channel.ALPHA)
     if include_object_id:

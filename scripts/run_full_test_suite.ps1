@@ -23,6 +23,22 @@ if ($manifestText -notmatch '(?m)^version = "([^"]+)"$') {
 $packageVersion = $Matches[1]
 $targetConfig = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "packaging\blender_targets.json") |
     ConvertFrom-Json
+$releaseContractPath = Join-Path $repoRoot "packaging\release_contract.json"
+$releaseContract = Get-Content -Raw -LiteralPath $releaseContractPath | ConvertFrom-Json
+if ($releaseContract.module_id -ne "camera_batch_renderer") {
+    throw "Release contract module_id does not match the installed Python module"
+}
+$assetStem = $releaseContract.asset_stem
+$candidateCommit = (& git -C $repoRoot rev-parse HEAD).Trim()
+if ($LASTEXITCODE -ne 0) { throw "Cannot identify release candidate commit" }
+$worktreeChanges = @(& git -C $repoRoot status --porcelain --untracked-files=normal)
+if ($LASTEXITCODE -ne 0) { throw "Cannot inspect release candidate worktree" }
+$worktreeClean = $worktreeChanges.Count -eq 0
+if ($Release) {
+    if (-not $worktreeClean) {
+        throw "Release mode requires a clean worktree at commit $candidateCommit"
+    }
+}
 
 function Invoke-TestStep {
     param(
@@ -52,7 +68,7 @@ function Invoke-TestStep {
         return $argument
     })
     try {
-        $process = Start-Process -FilePath $Executable -ArgumentList $quotedArguments -PassThru `
+        $process = Start-Process -FilePath $Executable -ArgumentList $quotedArguments -PassThru -WindowStyle Hidden `
             -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
         if ($process.WaitForExit($TimeoutSeconds * 1000)) {
             $process.WaitForExit()
@@ -314,7 +330,9 @@ if ($buildPassed -and $gatePassed) {
         $oldExpectedMinimum = $env:RAC_EXPECTED_VERSION_MIN
         $oldInstalledModule = $env:RAC_INSTALLED_MODULE
         $oldContractOutput = $env:RAC_CONTRACT_OUTPUT
+        $oldReleaseContract = $env:RAC_RELEASE_CONTRACT
         try {
+            $env:RAC_RELEASE_CONTRACT = $releaseContractPath
             $env:BLENDER_USER_CONFIG = Join-Path $testRoot "config"
             $env:BLENDER_USER_SCRIPTS = Join-Path $testRoot "scripts"
             $env:BLENDER_USER_DATAFILES = Join-Path $testRoot "datafiles"
@@ -322,7 +340,19 @@ if ($buildPassed -and $gatePassed) {
             $env:BLENDER_USER_RESOURCES = Join-Path $testRoot "resources"
             $env:TEMP = Join-Path $testRoot "temp"
             $env:TMP = $env:TEMP
-            New-Item -ItemType Directory -Force -Path $env:TEMP | Out-Null
+            # Blender ignores a user-path override when its directory does not exist and can then
+            # fall back to the real profile. Create every override before any install/remove call.
+            $isolationDirectories = @(
+                $env:BLENDER_USER_CONFIG,
+                $env:BLENDER_USER_SCRIPTS,
+                $env:BLENDER_USER_DATAFILES,
+                $env:BLENDER_USER_EXTENSIONS,
+                $env:BLENDER_USER_RESOURCES,
+                $env:TEMP
+            )
+            foreach ($directory in $isolationDirectories) {
+                New-Item -ItemType Directory -Force -Path $directory | Out-Null
+            }
             $target = @($targetConfig.targets | Where-Object tested_version -eq $row.label)[0]
             $env:RAC_EXPECTED_TARGET = $target.id
             $env:RAC_EXPECTED_VERSION_MIN = $target.version_min
@@ -336,7 +366,7 @@ if ($buildPassed -and $gatePassed) {
                 "--", $demo
             ) -SuccessPattern 'DEMO_SCENE_OK'
             if ($row.version -ge [version]"4.2.0") {
-                $package = Join-Path $repoRoot "dist\camera_batch_renderer-$packageVersion-$($target.id).zip"
+                $package = Join-Path $repoRoot "dist\$assetStem-$packageVersion-$($target.id).zip"
                 $installed = Invoke-TestStep "blender-$($row.label)-extension-install" $row.path @(
                     "--factory-startup", "--command", "extension", "install-file",
                     "-r", "user_default", "-e", $package
@@ -361,7 +391,7 @@ if ($buildPassed -and $gatePassed) {
                 }
             }
             else {
-                $env:RAC_LEGACY_PACKAGE = Join-Path $repoRoot "dist\camera_batch_renderer-$packageVersion-$($target.id).zip"
+                $env:RAC_LEGACY_PACKAGE = Join-Path $repoRoot "dist\$assetStem-$packageVersion-$($target.id).zip"
                 $env:RAC_INSTALLED_MODULE = "camera_batch_renderer"
                 if ($created) {
                     Invoke-TestStep "blender-$($row.label)-legacy-installed-demo" $row.path @(
@@ -387,6 +417,7 @@ if ($buildPassed -and $gatePassed) {
             $env:RAC_EXPECTED_VERSION_MIN = $oldExpectedMinimum
             $env:RAC_INSTALLED_MODULE = $oldInstalledModule
             $env:RAC_CONTRACT_OUTPUT = $oldContractOutput
+            $env:RAC_RELEASE_CONTRACT = $oldReleaseContract
         }
     }
     $contractArguments = @(
@@ -414,7 +445,7 @@ $failed = @($results | Where-Object status -eq "failed")
 $notRun = @($results | Where-Object status -eq "not_run")
 $packageHashes = @()
 foreach ($target in $targetConfig.targets) {
-    $path = Join-Path $repoRoot "dist\camera_batch_renderer-$packageVersion-$($target.id).zip"
+    $path = Join-Path $repoRoot "dist\$assetStem-$packageVersion-$($target.id).zip"
     if (Test-Path -LiteralPath $path -PathType Leaf) {
         $hash = Get-FileHash -Algorithm SHA256 -LiteralPath $path
         $packageHashes += [pscustomobject]@{ path = $path; sha256 = $hash.Hash }
@@ -425,6 +456,8 @@ $summary = [ordered]@{
     created_at = (Get-Date).ToString("o")
     mode = if ($Release) { "release" } else { "development" }
     repository = $repoRoot
+    candidate_commit = $candidateCommit
+    worktree_clean = $worktreeClean
     report_directory = $reportRoot
     blender_versions = @($blenderRows | ForEach-Object label)
     passed = @($results | Where-Object status -eq "passed").Count

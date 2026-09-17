@@ -29,7 +29,7 @@ class VersionCompatibilityTests(unittest.TestCase):
         self.assertEqual(tuple(int(part) for part in version.split(".")), VERSION)
         self.assertIn(f'"version": {VERSION}', entry_point)
         self.assertIn('"addon_version": VERSION_TEXT', runtime)
-        self.assertIn('text=f"Version {VERSION_TEXT}"', panel)
+        self.assertIn('text=f"Version {VERSION_TEXT} · Blender {TARGET_LABEL}"', panel)
 
     def test_legacy_bl_info_is_literal_for_blender_discovery(self) -> None:
         entry_point = (PACKAGE / "__init__.py").read_text(encoding="utf-8")

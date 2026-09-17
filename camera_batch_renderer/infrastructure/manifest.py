@@ -9,12 +9,15 @@ from typing import Any
 
 
 class AtomicJsonWriter:
-    def __init__(self, path: Path):
+    def __init__(self, path: Path, *, temporary_directory: Path | None = None):
         self.path = path
+        self.temporary_directory = temporary_directory
 
     def write(self, payload: Mapping[str, Any]) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        temporary = self.path.with_name(f".{self.path.name}.{uuid.uuid4().hex}.tmp")
+        temporary_directory = self.temporary_directory or self.path.parent
+        temporary_directory.mkdir(parents=True, exist_ok=True)
+        temporary = temporary_directory / f".{self.path.name}.{uuid.uuid4().hex}.tmp"
         try:
             with temporary.open("w", encoding="utf-8", newline="\n") as handle:
                 json.dump(payload, handle, ensure_ascii=False, indent=2, sort_keys=True)

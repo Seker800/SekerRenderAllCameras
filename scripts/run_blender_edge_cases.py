@@ -16,6 +16,7 @@ if str(PACKAGE_PARENT) not in sys.path:
 
 from camera_batch_renderer.blender.runtime import run_batch_sync  # noqa: E402
 from camera_batch_renderer.blender.scene_reader import validate_scene  # noqa: E402
+from camera_batch_renderer.infrastructure.storage import WORK_DIRECTORY_NAME  # noqa: E402
 
 
 def assert_true(condition: bool, message: str) -> None:
@@ -73,10 +74,9 @@ def add_camera(scene: bpy.types.Scene, name: str, *, orthographic: bool) -> bpy.
 
 
 def assert_clean_output_directory(directory: Path) -> None:
-    assert_true(not (directory / ".inprogress").exists(), "Progress marker leaked")
     assert_true(
-        not any(path.name.startswith(".staging-") for path in directory.iterdir()),
-        "Staging directory leaked",
+        not (directory / WORK_DIRECTORY_NAME).exists(),
+        "Successful batch left its hidden working directory",
     )
 
 

@@ -98,6 +98,7 @@ class RAC_OT_render_all(bpy.types.Operator):
         try:
             session = create_session(
                 context.scene,
+                include_beauty=settings.include_beauty,
                 include_alpha=settings.include_alpha,
                 include_object_id=settings.include_object_id,
                 include_material_id=settings.include_material_id,

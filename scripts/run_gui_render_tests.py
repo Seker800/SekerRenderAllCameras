@@ -18,6 +18,7 @@ if str(PACKAGE_PARENT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_PARENT))
 
 import camera_batch_renderer  # noqa: E402
+from camera_batch_renderer.infrastructure.storage import WORK_DIRECTORY_NAME  # noqa: E402
 from camera_batch_renderer.presentation import runtime_state  # noqa: E402
 from camera_batch_renderer.presentation.host_policy import (  # noqa: E402
     OPERATOR_START_RESULT,
@@ -127,8 +128,8 @@ def validate_result() -> None:
     )
     assert_true(not runtime_state.active_session, "GUI runtime session leaked")
     assert_true(
-        not any(path.name.startswith(".staging-") for path in output.iterdir()),
-        "GUI render staging directory leaked",
+        not (output / WORK_DIRECTORY_NAME).exists(),
+        "Successful GUI batch left its hidden working directory",
     )
     assert_true(
         not any(item.name.startswith("RAC_") for item in bpy.data.materials),
@@ -137,7 +138,36 @@ def validate_result() -> None:
     assert_true(max_window_count == 1, "GUI batch opened a separate render window")
 
 
+def start_material_only_test() -> None:
+    settings = bpy.context.scene.rac_settings
+    settings.include_beauty = False
+    settings.include_alpha = False
+    settings.include_object_id = False
+    settings.include_material_id = True
+    result = invoke_from_view3d(bpy.ops.render.render_all_cameras)
+    assert_true(result == OPERATOR_START_RESULT, f"Material-only batch did not start: {result}")
+
+
+def validate_material_only_result() -> None:
+    output = temporary / "SekerRenderAllCameras"
+    manifest = next(output.glob("*_RenderInfo.json"))
+    payload = json.loads(manifest.read_text(encoding="utf-8"))
+    assert_true(payload["channels"] == ["MaterialID"], "GUI channel selection drifted")
+    assert_true(len(payload["results"]) == 3, "Material-only GUI result count is wrong")
+    assert_true(
+        all(item["channel"] == "MaterialID" for item in payload["results"]),
+        "Material-only GUI batch rendered an unselected channel",
+    )
+    assert_true(
+        not (output / WORK_DIRECTORY_NAME).exists(),
+        "Material-only GUI batch left its working directory",
+    )
+
+
 def start_cancel_test() -> None:
+    settings = bpy.context.scene.rac_settings
+    settings.include_beauty = True
+    settings.include_material_id = False
     result = invoke_from_view3d(bpy.ops.render.render_all_cameras)
     assert_true(result == OPERATOR_START_RESULT, f"Cancel batch did not start: {result}")
     assert_true(
@@ -155,7 +185,10 @@ def validate_cancel_result() -> None:
     assert_true(payload["status"] == "cancelled", "GUI cancel status is wrong")
     assert_true(len(payload["results"]) == 1, "GUI cancel did not finish the current image")
     assert_true(len(images) == 3, "GUI cancel removed old images that were not regenerated")
-    assert_true((output / ".incomplete").is_file(), "GUI cancel marker is missing")
+    assert_true(
+        (output / WORK_DIRECTORY_NAME / ".incomplete").is_file(),
+        "GUI cancel marker is missing from the hidden working directory",
+    )
     assert_true(bpy.context.scene.world == original_world, "GUI cancel did not restore World")
     assert_true(
         tuple(light.hide_render for light in environment_lights) == original_light_states,
@@ -173,6 +206,26 @@ def poll() -> float | None:
         elapsed = time.monotonic() - started_at
         max_window_count = max(max_window_count, len(bpy.context.window_manager.windows))
         if phase == "start_success":
+            settings = bpy.context.scene.rac_settings
+            settings.include_beauty = False
+            settings.include_alpha = False
+            settings.include_object_id = False
+            settings.include_material_id = False
+            try:
+                result = invoke_from_view3d(bpy.ops.render.render_all_cameras)
+            except RuntimeError as exc:
+                assert_true(
+                    "Select at least one output" in str(exc),
+                    f"Empty-channel GUI error is unclear: {exc}",
+                )
+            else:
+                assert_true(result == {"CANCELLED"}, "GUI accepted an empty channel selection")
+            assert_true(
+                not (temporary / "SekerRenderAllCameras" / WORK_DIRECTORY_NAME).exists(),
+                "Empty GUI selection created a working directory",
+            )
+            settings.include_beauty = True
+            settings.include_material_id = True
             result = invoke_from_view3d(bpy.ops.render.render_all_cameras)
             assert_true(result == OPERATOR_START_RESULT, f"GUI batch did not start: {result}")
             assert_true(
@@ -183,6 +236,11 @@ def poll() -> float | None:
             return 0.1
         if phase == "success" and runtime_state.active_session is None:
             validate_result()
+            start_material_only_test()
+            phase = "material_only"
+            return 0.1
+        if phase == "material_only" and runtime_state.active_session is None:
+            validate_material_only_result()
             start_cancel_test()
             phase = "cancel"
             return 0.1

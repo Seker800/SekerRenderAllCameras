@@ -33,6 +33,7 @@ from __future__ import annotations
 from .host_drivers import {target["driver"]}
 
 TARGET_ID = {target["id"]!r}
+TARGET_LABEL = {target["id"].removeprefix("blender-").replace("-lts", " LTS")!r}
 SUPPORTED_VERSION_MIN = {minimum!r}
 SUPPORTED_VERSION_MAX = {maximum!r}
 HOST_DRIVER_CLASS = {target["driver"]}
@@ -63,6 +64,16 @@ def prepare(source: Path, destination: Path, target: dict[str, str]) -> None:
         policy_source(target), encoding="utf-8", newline="\n"
     )
 
+    version_match = re.search(
+        r'^version = "([^"]+)"$',
+        (source / "blender_manifest.toml").read_text(encoding="utf-8"),
+        re.MULTILINE,
+    )
+    if version_match is None:
+        raise ValueError("Cannot read add-on version from blender_manifest.toml")
+    blender_label = target["id"].removeprefix("blender-").replace("-lts", " LTS")
+    display_name = f"Render All Cameras {version_match.group(1)} (Blender {blender_label})"
+
     entry_path = destination / "__init__.py"
     entry = entry_path.read_text(encoding="utf-8")
     minimum = version_tuple(target["version_min"])
@@ -72,11 +83,13 @@ def prepare(source: Path, destination: Path, target: dict[str, str]) -> None:
         entry,
         count=1,
     )
+    entry = entry.replace('"name": "Render All Cameras"', f'"name": "{display_name}"', 1)
     entry_path.write_text(entry, encoding="utf-8", newline="\n")
 
     manifest_path = destination / "blender_manifest.toml"
     if target["package_type"] == "extension":
         manifest = manifest_path.read_text(encoding="utf-8")
+        manifest = manifest.replace('name = "Render All Cameras"', f'name = "{display_name}"', 1)
         manifest = re.sub(
             r'^blender_version_min = "[^"]+"$',
             f'blender_version_min = "{target["version_min"]}"',

@@ -4,6 +4,8 @@
 
 ## 当前执行
 
+- `COMPLETED`：[`COMPLETED-发布契约与五包同源门禁.md`](COMPLETED-发布契约与五包同源门禁.md) — 统一公开身份与资产名，并在五个安装包上验证输出选项与单通道语义；尚未执行线上发布。
+- `COMPLETED`：[`COMPLETED-可选Beauty与隐藏工作目录.md`](COMPLETED-可选Beauty与隐藏工作目录.md) — Beauty 与三个 ID/Alpha 通道并列可选，运行期文件集中到一个固定隐藏工作目录；五版本完整开发门禁 63/63 通过。
 - `COMPLETED`：[`COMPLETED-分版本Blender适配与发布矩阵.md`](COMPLETED-分版本Blender适配与发布矩阵.md) — 共享纯核心，按 4.0.2、4.1.1、4.2.0、4.5 LTS、5.2 LTS 分别装配宿主实现、测试和发布，并完成五个线上资产哈希回读。
 - `COMPLETED`：[`COMPLETED-双包与发布门禁.md`](COMPLETED-双包与发布门禁.md) — 自动比较 Extension/Legacy 功能内容，并把运行时 push 与版本、Release、下载链接闭环绑定。
 - `COMPLETED`：[`COMPLETED-面板显示版本号.md`](COMPLETED-面板显示版本号.md) — 在两个插件面板中直接显示当前运行版本，区分旧内存实例与新安装包。

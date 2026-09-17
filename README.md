@@ -10,20 +10,21 @@
 
 | 你的 Blender 版本 | 点击这里下载插件 |
 |---|---|
-| **4.0.2–4.0.x** | **[⬇️ 下载 Blender 4.0 插件](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.6.0-blender-4.0.2.zip)** |
-| **4.1.1–4.1.x** | **[⬇️ 下载 Blender 4.1 插件](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.6.0-blender-4.1.1.zip)** |
-| **4.2.x** | **[⬇️ 下载 Blender 4.2 插件](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.6.0-blender-4.2.0.zip)** |
-| **4.5.x LTS** | **[⬇️ 下载 Blender 4.5 LTS 插件](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.6.0-blender-4.5-lts.zip)** |
-| **5.2.x LTS** | **[⬇️ 下载 Blender 5.2 LTS 插件](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/camera_batch_renderer-0.6.0-blender-5.2-lts.zip)** |
+| **4.0.2–4.0.x** | **[⬇️ Render All Cameras 0.7.0 · Blender 4.0.2](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/RenderAllCameras-0.7.0-blender-4.0.2.zip)** |
+| **4.1.1–4.1.x** | **[⬇️ Render All Cameras 0.7.0 · Blender 4.1.1](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/RenderAllCameras-0.7.0-blender-4.1.1.zip)** |
+| **4.2.x** | **[⬇️ Render All Cameras 0.7.0 · Blender 4.2.0](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/RenderAllCameras-0.7.0-blender-4.2.0.zip)** |
+| **4.5.x LTS** | **[⬇️ Render All Cameras 0.7.0 · Blender 4.5 LTS](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/RenderAllCameras-0.7.0-blender-4.5-lts.zip)** |
+| **5.2.x LTS** | **[⬇️ Render All Cameras 0.7.0 · Blender 5.2 LTS](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/RenderAllCameras-0.7.0-blender-5.2-lts.zip)** |
 
 > 下载得到 `.zip` 文件后，**不要解压**。也不要下载页面底部 GitHub 自动提供的 `Source code (zip)`，它不是可安装的插件。
+> ZIP 文件名和 Blender 安装列表、面板名称都标明插件版本及目标 Blender 版本，例如 **Render All Cameras 0.7.0 (Blender 4.0.2)**。内部模块标识仍为 `camera_batch_renderer`，升级时不会生成另一款插件。
 
 ### 第 3 步：在 Blender 中安装
 
 - **Blender 4.0 / 4.1：**打开 **编辑 → 偏好设置 → 插件 → 安装**，选择刚下载的 ZIP，然后勾选启用 **Render All Cameras**。
 - **Blender 4.2 / 4.5 / 5.2：**打开 **编辑 → 偏好设置 → 获取扩展**，点击右上角菜单，选择 **从磁盘安装**，然后选择刚下载的 ZIP。
 
-如果表格里没有你的 Blender 版本，表示该版本目前没有经过完整测试，请不要随便选择其他版本的包。全部文件也可以在 **[v0.6.0 发布页面](https://github.com/Seker800/SekerRenderAllCameras/releases/tag/v0.6.0)** 查看。
+如果表格里没有你的 Blender 版本，表示该版本目前没有经过完整测试，请不要随便选择其他版本的包。全部文件也可以在 **[v0.7.0 发布页面](https://github.com/Seker800/SekerRenderAllCameras/releases/tag/v0.7.0)** 查看。
 
 **One-click batch rendering for every camera in a Blender scene.** Render still images with
 automatic filenames, per-camera light/World environments, optional alpha masks, Object ID maps,
@@ -33,28 +34,39 @@ Material ID maps, and JSON manifests.
 Material ID 和 JSON 清单。
 
 [![Latest release](https://img.shields.io/github/v/release/Seker800/SekerRenderAllCameras)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest)
-[![Current source](https://img.shields.io/badge/Current_source-0.6.0-2ea44f)](#whats-new-in-060-current-source)
+[![Current source](https://img.shields.io/badge/Current_source-0.7.0-green)](#whats-new-in-070)
 [![Five tested Blender lines](https://img.shields.io/badge/Blender-5_separate_tested_packages-F5792A?logo=blender&logoColor=white)](#compatibility)
 [![License: GPL v3+](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](LICENSE)
 
 > Download the package whose name exactly matches Blender 4.0.2, 4.1.1, 4.2.0, 4.5 LTS, or
 > 5.2 LTS. Do not unzip it and do not substitute a package from another Blender line.
 >
-> The repository source is currently **0.6.0**. A release is complete only after all five links
-> resolve to byte-for-byte matching assets in the latest GitHub Release.
+> The downloadable release and repository source are currently **0.7.0**. Choose the package for
+> your Blender version; all five packages share the same features.
 
 ## Plugin at a glance
 
-[![Render All Cameras 0.6.0 plugin panel with Material ID and camera environments](Docs/images/plugin-quick-start.jpg)](Docs/images/plugin-quick-start.jpg)
+[![Render All Cameras 0.7.0 plugin panel with selectable Beauty, Alpha, Object ID, Material ID and camera environments](Docs/images/plugin-quick-start.jpg)](Docs/images/plugin-quick-start.jpg)
 
-Save the `.blend`, press <kbd>N</kbd> in the 3D Viewport, open **Batch Render**, choose the optional
-Alpha/Object ID/Material ID outputs, and click **Render All Cameras**. The plugin renders every usable camera to
-the fixed `SekerRenderAllCameras/` folder next to the saved `.blend`.
+Save the `.blend`, press <kbd>N</kbd> in the 3D Viewport, open **Batch Render**, choose at least one of
+Beauty/Alpha/Object ID/Material ID, and click **Render All Cameras**. Beauty starts enabled. The plugin
+renders every usable camera to the fixed `SekerRenderAllCameras/` folder next to the saved `.blend`.
 
-中文：保存 `.blend`，在 3D 视图按 <kbd>N</kbd>，打开 **Batch Render**；按需勾选 Alpha / Object ID / Material ID，
-然后点击 **Render All Cameras**。上图只保留插件面板，点击可查看原始尺寸。
+中文：保存 `.blend`，在 3D 视图按 <kbd>N</kbd>，打开 **Batch Render**；从 Beauty / Alpha / Object ID /
+Material ID 中至少勾选一项（Beauty 默认开启），然后点击 **Render All Cameras**。上图点击可查看原始尺寸。
 
-## What's new in 0.6.0 (current source)
+## What's new in 0.7.0
+
+- Beauty is now a normal output checkbox, enabled by default. Users may render only Alpha, only
+  Object ID, only Material ID, or any combination without an implicit Beauty render.
+- When no channel is selected, the plug-in stops before creating output files and explains what to
+  select.
+- Runtime staging, progress markers, and atomic-write temporary files now live under one fixed
+  hidden working directory; successful batches remove it completely.
+
+中文：Beauty 现在与 Alpha、Object ID、Material ID 一样可以自由勾选，默认仍开启；支持只渲染任意单一通道。运行期临时文件集中到一个隐藏工作目录，成功后整体清理。
+
+### Included in 0.6.0
 
 - Publish five separately bounded packages for Blender 4.0.2, 4.1.1, 4.2.0, 4.5 LTS, and 5.2 LTS.
 - Run the same background, GUI, stress, wrong-version, installed-package, and semantic-contract
@@ -92,13 +104,13 @@ the fixed `SekerRenderAllCameras/` folder next to the saved `.blend`.
 
 ### Verified in five Blender versions
 
-Release 0.6.0 passed the complete 63-step release suite in Blender **4.0.2, 4.1.1, 4.2.0,
+Release 0.7.0 passed the complete 63-step release suite in Blender **4.0.2, 4.1.1, 4.2.0,
 4.5.13 LTS, and 5.2.1 LTS**, with zero failures and zero skipped release checks. Every version ran
 real background and GUI renders, all four output channels, edge cases, a 50-camera batch, ten
 repeated batches, wrong-package rejection, clean installation, installed-package rendering, and
 removal. The five installed packages also produced matching functional contracts.
 
-中文：0.6.0 已分别在 Blender **4.0.2、4.1.1、4.2.0、4.5.13 LTS、5.2.1 LTS** 中完成真实测试；
+中文：0.7.0 已分别在 Blender **4.0.2、4.1.1、4.2.0、4.5.13 LTS、5.2.1 LTS** 中完成真实测试；
 共 63 项通过、0 项失败、0 项未运行。不是只测试代码导入，而是实际安装插件、从界面和后台渲染、检查输出，再执行禁用和卸载。
 
 ## Why use it?

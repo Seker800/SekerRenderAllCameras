@@ -37,6 +37,7 @@ class BlenderRenderAdapter:
         self.material_id_names: dict[str, str] = {}
         self.material_id_skipped: list[dict[str, str]] = []
         self.last_beauty_path = None
+        self.last_beauty_camera_key = None
         self.transaction = transaction
         self.environments = environments
 
@@ -47,15 +48,19 @@ class BlenderRenderAdapter:
         camera = self.find_camera(action.camera_key)
         self.transaction.apply_environment(self.environments.get(action.camera_key))
         if action.channel is Channel.BEAUTY:
+            self.last_beauty_path = None
+            self.last_beauty_camera_key = None
             self.scene.camera = camera
             self.scene.render.filepath = str(staging_path)
             self.render_scene = self.scene
-            self.last_beauty_path = action.output_path
             return True
         if action.channel is Channel.ALPHA:
-            if self.scene.render.film_transparent:
-                if self.last_beauty_path is None or not self.last_beauty_path.exists():
-                    raise RuntimeError("Beauty output is unavailable for Alpha extraction")
+            if (
+                self.scene.render.film_transparent
+                and self.last_beauty_camera_key == action.camera_key
+                and self.last_beauty_path is not None
+                and self.last_beauty_path.exists()
+            ):
                 save_file_alpha(self.last_beauty_path, staging_path)
                 return False
             self.auxiliary = AlphaScene(self.scene, camera, staging_path)
@@ -117,6 +122,9 @@ class BlenderRenderAdapter:
         if not staging_path.is_file():
             raise RuntimeError(f"Render output was not written: {staging_path.name}")
         os.replace(staging_path, action.output_path)
+        if action.channel is Channel.BEAUTY:
+            self.last_beauty_path = action.output_path
+            self.last_beauty_camera_key = action.camera_key
 
     def staging_path(self, action: RenderAction) -> Path:
         return self.staging_directory / action.output_path.name

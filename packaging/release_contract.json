@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "display_name": "Render All Cameras",
+  "module_id": "camera_batch_renderer",
+  "asset_stem": "RenderAllCameras",
+  "output_options": {
+    "include_beauty": {"label": "Render Beauty", "default": true, "channel": "Beauty"},
+    "include_alpha": {"label": "Render Alpha", "default": false, "channel": "Alpha"},
+    "include_object_id": {"label": "Render Object ID", "default": false, "channel": "ObjectID"},
+    "include_material_id": {"label": "Render Material ID", "default": false, "channel": "MaterialID"}
+  }
+}

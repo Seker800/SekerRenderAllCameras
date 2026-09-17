@@ -17,6 +17,7 @@ if str(PACKAGE_PARENT) not in sys.path:
 import camera_batch_renderer  # noqa: E402
 from camera_batch_renderer.blender.environment import id_key, layer_collections  # noqa: E402
 from camera_batch_renderer.blender.runtime import create_session, run_batch_sync  # noqa: E402
+from camera_batch_renderer.infrastructure.storage import WORK_DIRECTORY_NAME  # noqa: E402
 
 
 def assert_true(condition: bool, message: str) -> None:
@@ -127,6 +128,7 @@ def main() -> None:
         assert_true(RAC_PT_view3d_panel.is_registered, "3D Viewport N-panel not registered")
         assert_true(RAC_PT_view3d_panel.bl_category == "Batch Render", "N-panel tab is wrong")
         settings = scene.rac_settings
+        assert_true(settings.include_beauty, "Beauty must be enabled by default")
         assert_true(
             bpy.ops.render.camera_environment_pair_add() == {"FINISHED"},
             "Environment pair add operator failed",
@@ -276,6 +278,10 @@ def main() -> None:
         )
         assert_true(not session.allocation.marker.exists(), "Progress marker was not removed")
         assert_true(
+            not session.allocation.working_directory.exists(),
+            "Successful batch left its hidden working directory",
+        )
+        assert_true(
             len(list(session.allocation.directory.glob("*_RenderInfo.json"))) == 1,
             "Manifest missing",
         )
@@ -396,6 +402,69 @@ def main() -> None:
                 f"Temporary {label} leaked",
             )
 
+        for film_transparent in (False, True):
+            scene.render.film_transparent = film_transparent
+            alpha_only = run_batch_sync(
+                scene,
+                include_beauty=False,
+                include_alpha=True,
+            )
+            alpha_progress = alpha_only.coordinator.snapshot()
+            assert_true(len(alpha_progress.results) == 2, "Alpha-only action count is wrong")
+            assert_true(
+                all(result.channel.value == "Alpha" for result in alpha_progress.results),
+                "Alpha-only batch rendered an unselected channel",
+            )
+            assert_true(
+                all(result.path.is_file() for result in alpha_progress.results),
+                "Alpha-only output is missing",
+            )
+            assert_true(
+                not alpha_only.allocation.working_directory.exists(),
+                "Alpha-only batch left its working directory",
+            )
+
+        object_only = run_batch_sync(scene, include_beauty=False, include_object_id=True)
+        assert_true(
+            len(object_only.coordinator.snapshot().results) == 2
+            and all(
+                result.channel.value == "ObjectID"
+                for result in object_only.coordinator.snapshot().results
+            ),
+            "Object ID-only batch rendered the wrong actions",
+        )
+        material_only = run_batch_sync(scene, include_beauty=False, include_material_id=True)
+        assert_true(
+            len(material_only.coordinator.snapshot().results) == 2
+            and all(
+                result.channel.value == "MaterialID"
+                for result in material_only.coordinator.snapshot().results
+            ),
+            "Material ID-only batch rendered the wrong actions",
+        )
+
+        output_directory = session.allocation.directory
+        assert_true(
+            not (output_directory / WORK_DIRECTORY_NAME).exists(),
+            "A completed single-channel batch left its working directory",
+        )
+        try:
+            create_session(
+                scene,
+                include_beauty=False,
+                include_alpha=False,
+                include_object_id=False,
+                include_material_id=False,
+            )
+        except ValueError as exc:
+            assert_true("Select at least one output" in str(exc), "Empty-channel error is unclear")
+        else:
+            raise AssertionError("A batch with no selected channels was accepted")
+        assert_true(
+            not (output_directory / WORK_DIRECTORY_NAME).exists(),
+            "Empty-channel validation created a working directory",
+        )
+
         cancelled = create_session(scene, include_alpha=False, include_object_id=False)
         cancelled.start()
         cancelled.prepare_current()
@@ -406,8 +475,17 @@ def main() -> None:
             "Cancellation status is wrong",
         )
         assert_true(
-            (cancelled.allocation.directory / ".incomplete").exists(),
+            (cancelled.allocation.working_directory / ".incomplete").exists(),
             "Cancelled batch marker missing",
+        )
+        assert_true(
+            {
+                item.name
+                for item in cancelled.allocation.directory.iterdir()
+                if item.name.startswith(".")
+            }
+            == {WORK_DIRECTORY_NAME},
+            "Cancellation scattered working files in the output root",
         )
         assert_true(scene.camera == original_camera, "Cancellation did not restore camera")
         assert_true(scene.world == original_world, "Cancellation did not restore World")
@@ -499,12 +577,10 @@ def main() -> None:
             light_collections[1].hide_render,
             "Failure did not restore collection visibility",
         )
+        assert_true(not failed.allocation.staging_directory.exists(), "Failed staging leaked")
         assert_true(
-            not any(
-                path.name.startswith(".staging-")
-                for path in session.allocation.directory.iterdir()
-            ),
-            "A render staging directory leaked",
+            (failed.allocation.working_directory / ".incomplete").is_file(),
+            "Failed batch did not retain its hidden incomplete state",
         )
 
         material_failed = create_session(

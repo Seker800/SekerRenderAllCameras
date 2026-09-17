@@ -73,6 +73,7 @@ class RAC_EnvironmentPair(bpy.types.PropertyGroup):
 
 
 class RAC_Settings(bpy.types.PropertyGroup):
+    include_beauty: bpy.props.BoolProperty(name="Render Beauty", default=True)
     include_alpha: bpy.props.BoolProperty(name="Render Alpha", default=False)
     include_object_id: bpy.props.BoolProperty(name="Render Object ID", default=False)
     include_material_id: bpy.props.BoolProperty(name="Render Material ID", default=False)

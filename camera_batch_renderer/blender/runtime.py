@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import shutil
-import tempfile
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -86,11 +85,14 @@ class BlenderBatchSession:
         try:
             self.adapter.cleanup_auxiliary()
             self.transaction.restore()
+            self.write_manifest()
             if self.coordinator.snapshot().status is BatchStatus.COMPLETED:
                 mark_complete(self.allocation)
             else:
                 mark_incomplete(self.allocation)
-            self.write_manifest()
+        except Exception:
+            mark_incomplete(self.allocation)
+            raise
         finally:
             shutil.rmtree(self.staging_directory, ignore_errors=True)
 
@@ -165,7 +167,9 @@ class BlenderBatchSession:
         path = self.allocation.directory / (
             f"{self.coordinator.plan.blend_name}_ObjectID.json"
         )
-        AtomicJsonWriter(path).write(
+        AtomicJsonWriter(
+            path, temporary_directory=self.allocation.working_directory
+        ).write(
             {
                 "schema_version": 1,
                 "background": "#000000",
@@ -181,7 +185,9 @@ class BlenderBatchSession:
         path = self.allocation.directory / (
             f"{self.coordinator.plan.blend_name}_MaterialID.json"
         )
-        AtomicJsonWriter(path).write(
+        AtomicJsonWriter(
+            path, temporary_directory=self.allocation.working_directory
+        ).write(
             {
                 "schema_version": 1,
                 "background": "#000000",
@@ -202,8 +208,9 @@ class BlenderBatchSession:
 def create_session(
     scene: bpy.types.Scene,
     *,
-    include_alpha: bool,
-    include_object_id: bool,
+    include_beauty: bool = True,
+    include_alpha: bool = False,
+    include_object_id: bool = False,
     include_material_id: bool = False,
     environment_pairs: tuple[
         tuple[bpy.types.Object | None, bpy.types.Collection | None, bpy.types.World | None], ...
@@ -211,16 +218,18 @@ def create_session(
 ) -> BlenderBatchSession:
     validate_scene(
         scene,
+        include_beauty=include_beauty,
         include_alpha=include_alpha,
         include_object_id=include_object_id,
         include_material_id=include_material_id,
     )
     output_directory = Path(bpy.data.filepath).parent / OUTPUT_DIRECTORY_NAME
     allocation = prepare_output_directory(output_directory)
-    staging_directory = Path(tempfile.mkdtemp(prefix=".staging-", dir=output_directory))
+    staging_directory = allocation.staging_directory
     try:
         plan = build_render_plan(
             scene,
+            include_beauty=include_beauty,
             include_alpha=include_alpha,
             include_object_id=include_object_id,
             include_material_id=include_material_id,
@@ -257,7 +266,8 @@ def create_session(
             ),
             transaction=transaction,
             manifest=AtomicJsonWriter(
-                allocation.directory / f"{plan.blend_name}_RenderInfo.json"
+                allocation.directory / f"{plan.blend_name}_RenderInfo.json",
+                temporary_directory=allocation.working_directory,
             ),
         )
     except Exception:
@@ -273,6 +283,7 @@ def run_beauty_batch_sync(scene: bpy.types.Scene) -> BlenderBatchSession:
 def run_batch_sync(
     scene: bpy.types.Scene,
     *,
+    include_beauty: bool = True,
     include_alpha: bool = False,
     include_object_id: bool = False,
     include_material_id: bool = False,
@@ -282,6 +293,7 @@ def run_batch_sync(
 ) -> BlenderBatchSession:
     session = create_session(
         scene,
+        include_beauty=include_beauty,
         include_alpha=include_alpha,
         include_object_id=include_object_id,
         include_material_id=include_material_id,

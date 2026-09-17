@@ -1,6 +1,6 @@
 # Blender 全摄影机静帧批量渲染插件开发计划
 
-> 文档状态：实施基线（Revision 5）
+> 文档状态：实施基线（Revision 6）
 >
 > 最低目标版本：Blender 4.0.2
 >
@@ -12,7 +12,7 @@
 
 每台摄影机输出：
 
-- Beauty 主图，必选；
+- Beauty 主图，可选且默认开启；
 - Alpha 黑白贴图，可选；
 - Object ID 彩色贴图，可选。
 - Material ID 彩色贴图，可选。
@@ -24,7 +24,7 @@
 1. 一轮任务只处理一个 Scene、一个固定帧和多台摄影机。
 2. 所有结果保存到 `.blend` 文件同级的 `SekerRenderAllCameras/`，不创建数字批次目录。
 3. 文件名不使用批次 ID；同名新图成功后覆盖旧图，本次未生成的旧图保留。
-4. Beauty 严格遵循用户原有渲染内容设置。
+4. Beauty、Alpha、Object ID、Material ID 均可独立选择；至少选择一项，Beauty 默认开启并严格遵循用户原有渲染内容设置。
 5. Alpha 定义为“排除 World 背景后的原始渲染层透明度”，不是用户最终合成节点输出的 Alpha。
 6. 如果原场景没有开启透明背景，Alpha 需要一次独立辅助渲染，不能承诺零成本生成。
 7. Object ID 定义为“可见表面对象的离散彩色标签图”，默认关闭抗锯齿，确保像素颜色能够精确映射到 JSON。
@@ -41,7 +41,7 @@
 
 - 当前 Scene 的当前帧静帧渲染。
 - 当前 Scene 内全部摄影机的稳定收集和排序。
-- 逐台摄影机生成 Beauty。
+- 按用户选择逐台摄影机生成 Beauty、Alpha、Object ID 和/或 Material ID；允许任意单通道。
 - 可选 Alpha。
 - 可选精确 Object ID PNG。
 - 可选精确 Material ID PNG 与材质颜色映射 JSON。
@@ -71,8 +71,10 @@
 
 ### 4.1 设置区
 
+- `输出 Beauty`：默认开启。
 - `输出 Alpha`：默认关闭。
 - `输出 Object ID`：默认关闭。
+- `输出 Material ID`：默认关闭。
 - `输出 Material ID`：默认关闭。
 - `输出目录`：只读显示 `//SekerRenderAllCameras/`。
 - `摄影机数量`与`预计文件数量`。
@@ -134,9 +136,9 @@ scene.objects 中所有 type == 'CAMERA' 且 data 有效的对象
 
 1. 使用 `bpy.data.filepath` 判断文件是否已保存。
 2. 目录可重复准备，不清空已有图片或清单。
-3. 新图先写入同目录下的任务临时区，成功后使用原子替换覆盖同名旧图。
+3. 新图先写入输出目录内唯一的固定隐藏工作目录，成功后使用原子替换覆盖同名旧图；成功完成后整体删除工作目录。
 4. 未进入本次计划、未成功生成或取消后尚未执行的输出不碰触已有文件。
-5. 任务启动后刷新 `.inprogress` 和初始清单；正常完成删除 marker，取消或失败改为 `.incomplete`。
+5. `.inprogress`、`.incomplete`、staging 和 JSON 临时文件都位于固定隐藏工作目录中，不散落到最终输出根目录；取消或失败只在该目录保留未完成状态。
 6. 旧的 `RenderOutput/` 不自动迁移或删除。
 
 ## 7. 文件命名
@@ -602,7 +604,7 @@ Extension ZIP 必须在 Blender 4.2+ 完成官方验证与安装态测试；同�
 - Compositor 中存在 File Output 节点。
 - Film Transparent 开启与关闭。
 - 半透明、Holdout、玻璃和透明边缘。
-- 仅 Beauty、Beauty+Alpha、Beauty+ID、Beauty+Material ID、四者全部。
+- Beauty-only、Alpha-only、Object ID-only、Material ID-only、任意组合、四者全部；四项全未选必须在创建输出前拒绝。
 
 ### 19.3 ID 精确性
 
@@ -635,10 +637,11 @@ Extension ZIP 必须在 Blender 4.2+ 完成官方验证与安装态测试；同�
 - 未勾选通道、已移除摄影机和未执行动作的旧图保留。
 - 渲染失败或取消时，未成功替换的旧图保持可读。
 - 任务崩溃后保留可读清单和未完成标记。
+- 最终输出根目录不出现 staging、marker 或 `.tmp`；运行期文件只允许存在于一个固定隐藏工作目录。
 
 ## 20. 第一版验收标准
 
-1. 已保存工程包含多台摄影机时，一次点击生成全部 Beauty。
+1. 已保存工程包含多台摄影机时，一次点击按所选通道生成结果；Beauty 默认开启，但允许只生成 Alpha 或任一种 ID Map。
 2. 所有输出位于 `.blend` 同级 `SekerRenderAllCameras/`。
 3. 文件名不包含批次前缀，同名新图覆盖而未生成的旧图保留。
 4. 文件名包含 Blend 名、摄影机、通道和约定关键参数。

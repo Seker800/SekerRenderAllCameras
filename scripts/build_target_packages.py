@@ -59,13 +59,16 @@ def package_version(source: Path) -> str:
 
 def build_all(config: Path, source: Path, staging: Path, output: Path) -> list[dict[str, str]]:
     payload = json.loads(config.read_text(encoding="utf-8"))
+    contract = json.loads((config.parent / "release_contract.json").read_text(encoding="utf-8"))
+    if source.name != contract["module_id"]:
+        raise ValueError("Source package does not match the release contract module_id")
     version = package_version(source)
     results = []
     for target_value in payload["targets"]:
         target = load_target(config, target_value["id"])
         staged_source = staging / target["id"] / source.name
         prepare(source, staged_source, target)
-        artifact = output / f"{source.name}-{version}-{target['id']}.zip"
+        artifact = output / f"{contract['asset_stem']}-{version}-{target['id']}.zip"
         if target["package_type"] == "legacy":
             build_legacy_package(staged_source, artifact)
         else:
@@ -82,9 +85,7 @@ def build_all(config: Path, source: Path, staging: Path, output: Path) -> list[d
 
 def main() -> None:
     if len(sys.argv) != 5:
-        raise SystemExit(
-            "usage: build_target_packages.py CONFIG SOURCE STAGING OUTPUT"
-        )
+        raise SystemExit("usage: build_target_packages.py CONFIG SOURCE STAGING OUTPUT")
     config, source, staging, output = (Path(value) for value in sys.argv[1:])
     results = build_all(config, source, staging, output)
     print(json.dumps(results, ensure_ascii=False, indent=2, sort_keys=True))
