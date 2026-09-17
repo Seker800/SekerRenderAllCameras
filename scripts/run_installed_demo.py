@@ -46,8 +46,7 @@ def main() -> None:
     else:
         installed_name = addon.bl_info["name"]
     expected_name = (
-        f"{contract_spec['display_name']} {addon.bl_info['version'][0]}."
-        f"{addon.bl_info['version'][1]}.{addon.bl_info['version'][2]} "
+        f"{contract_spec['display_name']} {runtime.VERSION_TEXT} "
         f"(Blender {policy.TARGET_LABEL})"
     )
     assert_true(installed_name == expected_name, "Installed add-on name differs")
