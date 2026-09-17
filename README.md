@@ -24,6 +24,8 @@
 - **Blender 4.0 / 4.1：**打开 **编辑 → 偏好设置 → 插件 → 安装**，选择刚下载的 ZIP，然后勾选启用 **Render All Cameras**。
 - **Blender 4.2 / 4.5 / 5.2：**打开 **编辑 → 偏好设置 → 获取扩展**，点击右上角菜单，选择 **从磁盘安装**，然后选择刚下载的 ZIP。
 
+**更新已有插件后必须重启 Blender：**先保存正在编辑的内容，完全退出 Blender（关闭所有窗口），再重新打开。安装列表可能已显示 0.7.0，但未重启的面板仍在运行旧版代码（例如显示 Version 0.6.0、缺少 Beauty 开关）。重启后请在面板底部确认版本为 **0.7.0**，并确认能看到 **Render Beauty** 选项；未确认前不要开始批量渲染。
+
 如果表格里没有你的 Blender 版本，表示该版本目前没有经过完整测试，请不要随便选择其他版本的包。全部文件也可以在 **[v0.7.0 发布页面](https://github.com/Seker800/SekerRenderAllCameras/releases/tag/v0.7.0)** 查看。
 
 **One-click batch rendering for every camera in a Blender scene.** Render still images with
@@ -152,6 +154,11 @@ ProductShot_MaterialID.json
 1. Download the matching ZIP from the download table at the top of this page.
 2. In Blender, open **Edit → Preferences → Add-ons**.
 3. Click **Install…**, choose the downloaded ZIP, then enable **Render: Render All Cameras**.
+
+**Restart Blender after updating an existing installation.** Save your work, close every Blender
+window, and reopen Blender. The add-on list may already show 0.7.0 while an open panel is still
+running 0.6.0 code. Before rendering, confirm the panel shows **Version 0.7.0** and a
+**Render Beauty** checkbox.
 
 ## Quick start
 
