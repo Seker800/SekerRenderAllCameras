@@ -38,7 +38,7 @@ function Get-ProtectedProfileHashes {
 $protectedProfilesBefore = Get-ProtectedProfileHashes
 $protectedProfilesBefore | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $reportRoot 'protected-profiles-before.json') -Encoding utf8
 $manifestText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "camera_batch_renderer\blender_manifest.toml")
-if ($manifestText -notmatch '(?m)^version = "([^"]+)"$') {
+if ($manifestText -notmatch '(?m)^version = "([^"]+)"\r?$') {
     throw "Cannot read package version from blender_manifest.toml"
 }
 $packageVersion = $Matches[1]
