@@ -215,12 +215,13 @@ def verify_target_packages(root: Path, version: str) -> list[Path]:
     return paths
 
 
-def release_urls(root: Path, version: str) -> tuple[str, ...]:
-    base = f"https://github.com/{GITHUB_REPOSITORY}/releases/latest/download"
+def release_urls(root: Path, version: str, *, prerelease: bool = False) -> tuple[str, ...]:
+    route = f"download/v{version}" if prerelease else "latest/download"
+    base = f"https://github.com/{GITHUB_REPOSITORY}/releases/{route}"
     return tuple(f"{base}/{path.name}" for _target, path in target_artifact_paths(root, version))
 
 
-def verify_release_surfaces(root: Path, version: str) -> None:
+def verify_release_surfaces(root: Path, version: str, *, prerelease: bool = False) -> None:
     contract = read_release_contract(root)
     readme = (root / "README.md").read_text(encoding="utf-8")
     manifest = (root / PACKAGE_NAME / "blender_manifest.toml").read_text(encoding="utf-8")
@@ -229,7 +230,7 @@ def verify_release_surfaces(root: Path, version: str) -> None:
     required = {
         **{
             f"Target download link {index + 1}": url
-            for index, url in enumerate(release_urls(root, version))
+            for index, url in enumerate(release_urls(root, version, prerelease=prerelease))
         },
         **{
             f"Target display name {index + 1}": target_display_name(
@@ -249,7 +250,7 @@ def verify_release_surfaces(root: Path, version: str) -> None:
     surfaces = {
         **{
             f"Target download link {index + 1}": readme
-            for index, _url in enumerate(release_urls(root, version))
+            for index, _url in enumerate(release_urls(root, version, prerelease=prerelease))
         },
         **{
             f"Target display name {index + 1}": readme
@@ -270,21 +271,22 @@ def verify_release_surfaces(root: Path, version: str) -> None:
     actual_links = set(
         re.findall(
             rf"https://github\.com/{re.escape(GITHUB_REPOSITORY)}"
-            r"/releases/latest/download/[^\s\"')]+\.zip",
+            r"/releases/(?:latest/download|download/[^/]+)/[^\s\"')]+\.zip",
             readme,
         )
     )
-    if actual_links != set(release_urls(root, version)):
+    if actual_links != set(release_urls(root, version, prerelease=prerelease)):
         raise ValueError("README download links differ from the five release artifacts")
     for target, _path in target_artifact_paths(root, version):
         if target["tested_version"] not in readme:
             raise ValueError(f"README omits tested Blender {target['tested_version']}")
 
 
-def verify_online_release(root: Path, version: str) -> None:
+def verify_online_release(root: Path, version: str, *, prerelease: bool = False) -> None:
     artifacts = target_artifact_paths(root, version)
+    endpoint = f"tags/v{version}" if prerelease else "latest"
     release_request = urllib.request.Request(
-        f"https://api.github.com/repos/{GITHUB_REPOSITORY}/releases/latest",
+        f"https://api.github.com/repos/{GITHUB_REPOSITORY}/releases/{endpoint}",
         headers={"User-Agent": PACKAGE_NAME, "Accept": "application/vnd.github+json"},
     )
     with urllib.request.urlopen(release_request, timeout=30) as response:
@@ -297,7 +299,7 @@ def verify_online_release(root: Path, version: str) -> None:
         latest.get("tag_name") != f"v{version}"
         or version not in (latest.get("name") or "")
         or latest.get("draft")
-        or latest.get("prerelease")
+        or latest.get("prerelease") is not prerelease
         or actual_names != expected_names
     ):
         raise ValueError("Latest GitHub Release tag or assets differ from this tested version")
@@ -316,7 +318,9 @@ def verify_online_release(root: Path, version: str) -> None:
     with urllib.request.urlopen(readme_request, timeout=30) as response:
         if response.status != 200 or response.read() != (root / "README.md").read_bytes():
             raise ValueError("GitHub main README differs from the verified local README")
-    for url, (_target, local_path) in zip(release_urls(root, version), artifacts, strict=True):
+    for url, (_target, local_path) in zip(
+        release_urls(root, version, prerelease=prerelease), artifacts, strict=True
+    ):
         if not local_path.is_file():
             raise FileNotFoundError(f"Local release artifact is missing: {local_path}")
         request = urllib.request.Request(url, method="GET", headers={"User-Agent": PACKAGE_NAME})
@@ -331,19 +335,22 @@ def verify_online_release(root: Path, version: str) -> None:
             raise ValueError(f"Release asset hash does not match the tested package: {url}")
 
 
-def run_gate(root: Path, *, verify_online: bool = False, packages_only: bool = False) -> None:
+def run_gate(
+    root: Path, *, verify_online: bool = False, packages_only: bool = False,
+    prerelease: bool = False,
+) -> None:
     if verify_online and packages_only:
         raise ValueError("Online verification cannot skip README and release surfaces")
     root = root.resolve()
     version = read_project_version(root)
     packages = verify_target_packages(root, version)
     if not packages_only:
-        verify_release_surfaces(root, version)
+        verify_release_surfaces(root, version, prerelease=prerelease)
     if verify_online:
-        verify_online_release(root, version)
+        verify_online_release(root, version, prerelease=prerelease)
     print(
         f"RELEASE_GATE_OK version={version} targets={len(packages)} "
-        f"packages_only={packages_only} online={verify_online}"
+        f"packages_only={packages_only} online={verify_online} prerelease={prerelease}"
     )
 
 
@@ -362,11 +369,16 @@ def main() -> None:
         action="store_true",
         help="Also download all five latest-release assets and match their local SHA-256.",
     )
+    parser.add_argument(
+        "--prerelease", action="store_true",
+        help="Verify a prerelease by its version tag without replacing the latest stable release.",
+    )
     args = parser.parse_args()
     run_gate(
         args.root,
         verify_online=args.verify_online,
         packages_only=args.packages_only,
+        prerelease=args.prerelease,
     )
 
 

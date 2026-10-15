@@ -1,6 +1,6 @@
 # Render All Cameras for Blender
 
-> **0.8.0 发布候选：88 项通过、6 项失败，尚未正式发布。** 下方 0.8.0 下载链接将在发布后生效；当前正式版仍为 [v0.7.0](https://github.com/Seker800/SekerRenderAllCameras/releases/tag/v0.7.0)。已知限制与验证记录见 [0.8.0 发布验证](Docs/过程产物/review/BLOCKED-0.8.0发布验证.md)。
+> **0.8.0 测试版（Pre-release）：88 项通过、6 项失败。** 已知有 4.2.0 Cycles 渲染中崩溃、4.5 LTS Cycles 停滞及原生退出/禁用异常，详情见 [验证记录](Docs/过程产物/review/BLOCKED-0.8.0发布验证.md)。下方下载为测试版；需要正式版请使用 [v0.7.0](https://github.com/Seker800/SekerRenderAllCameras/releases/tag/v0.7.0)。
 
 ## ⬇️ Download / 下载插件
 
@@ -8,15 +8,15 @@
 
 打开 Blender，在顶部菜单选择 **帮助（Help）→ 关于 Blender（About Blender）**，记下版本号。
 
-### 第 2 步：点击对应版本下载
+### 第 2 步：点击对应版本下载 0.8.0 测试版
 
 | 你的 Blender 版本 | 点击这里下载插件 |
 |---|---|
-| **4.0.2–4.0.x** | **[⬇️ Render All Cameras 0.8.0 · Blender 4.0.2](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/RenderAllCameras-0.8.0-blender-4.0.2.zip)** |
-| **4.1.1–4.1.x** | **[⬇️ Render All Cameras 0.8.0 · Blender 4.1.1](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/RenderAllCameras-0.8.0-blender-4.1.1.zip)** |
-| **4.2.x** | **[⬇️ Render All Cameras 0.8.0 · Blender 4.2.0](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/RenderAllCameras-0.8.0-blender-4.2.0.zip)** |
-| **4.5.x LTS** | **[⬇️ Render All Cameras 0.8.0 · Blender 4.5 LTS](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/RenderAllCameras-0.8.0-blender-4.5-lts.zip)** |
-| **5.2.x LTS** | **[⬇️ Render All Cameras 0.8.0 · Blender 5.2 LTS](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/RenderAllCameras-0.8.0-blender-5.2-lts.zip)** |
+| **4.0.2–4.0.x** | **[⬇️ Render All Cameras 0.8.0 · Blender 4.0.2](https://github.com/Seker800/SekerRenderAllCameras/releases/download/v0.8.0/RenderAllCameras-0.8.0-blender-4.0.2.zip)** |
+| **4.1.1–4.1.x** | **[⬇️ Render All Cameras 0.8.0 · Blender 4.1.1](https://github.com/Seker800/SekerRenderAllCameras/releases/download/v0.8.0/RenderAllCameras-0.8.0-blender-4.1.1.zip)** |
+| **4.2.x** | **[⬇️ Render All Cameras 0.8.0 · Blender 4.2.0](https://github.com/Seker800/SekerRenderAllCameras/releases/download/v0.8.0/RenderAllCameras-0.8.0-blender-4.2.0.zip)** |
+| **4.5.x LTS** | **[⬇️ Render All Cameras 0.8.0 · Blender 4.5 LTS](https://github.com/Seker800/SekerRenderAllCameras/releases/download/v0.8.0/RenderAllCameras-0.8.0-blender-4.5-lts.zip)** |
+| **5.2.x LTS** | **[⬇️ Render All Cameras 0.8.0 · Blender 5.2 LTS](https://github.com/Seker800/SekerRenderAllCameras/releases/download/v0.8.0/RenderAllCameras-0.8.0-blender-5.2-lts.zip)** |
 
 > 下载得到 `.zip` 文件后，**不要解压**。也不要下载页面底部 GitHub 自动提供的 `Source code (zip)`，它不是可安装的插件。
 > ZIP 文件名和 Blender 安装列表、面板名称都标明插件版本及目标 Blender 版本，例如 **Render All Cameras 0.8.0 (Blender 4.0.2)**。内部模块标识仍为 `camera_batch_renderer`，升级时不会生成另一款插件。
@@ -45,8 +45,8 @@ Material ID 和 JSON 清单。
 > Download the package whose name exactly matches Blender 4.0.2, 4.1.1, 4.2.0, 4.5 LTS, or
 > 5.2 LTS. Do not unzip it and do not substitute a package from another Blender line.
 >
-> This branch contains the **0.8.0 candidate**. The public stable release remains **0.7.0**
-> until the validation failures are resolved or an explicit release decision is made.
+> The repository source is currently **0.8.0**, published as a **pre-release** with known
+> failures. The latest stable release remains **0.7.0**. The table above downloads the test release.
 
 ## Plugin at a glance
 
@@ -112,7 +112,7 @@ Material ID 中至少勾选一项（Beauty 默认开启），然后点击 **Rend
 
 ### Validation and known limits
 
-The 0.8.0 candidate targets Blender **4.0.2, 4.1.1, 4.2.0, 4.5.13 LTS and 5.2.1 LTS**.
+The 0.8.0 pre-release targets Blender **4.0.2, 4.1.1, 4.2.0, 4.5.13 LTS and 5.2.1 LTS**.
 Release validation covers real renders, installed packages, all four channels, cancellation,
 failure recovery and protected user preferences. The complete suite returned **88 passed / 6 failed / 0 not_run**. All five installed-package
 contracts passed; the native GUI failures below still block normal release qualification.

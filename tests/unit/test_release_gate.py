@@ -183,6 +183,22 @@ class ReleaseGateTests(unittest.TestCase):
             ):
                 verify_online_release(root, "1.2.3")
 
+            with patch("scripts.release_gate.urllib.request.urlopen",
+                       side_effect=online_response):
+                with self.assertRaisesRegex(ValueError, "tag or assets differ"):
+                    verify_online_release(root, "1.2.3", prerelease=True)
+            release["prerelease"] = True
+            with patch("scripts.release_gate.urllib.request.urlopen",
+                       side_effect=online_response) as requests:
+                verify_online_release(root, "1.2.3", prerelease=True)
+                urls = [call.args[0].full_url for call in requests.call_args_list]
+                self.assertTrue(urls[0].endswith("/releases/tags/v1.2.3"))
+                self.assertIn("/releases/download/v1.2.3/", urls[-1])
+                self.assertFalse(any("/latest" in url for url in urls))
+                with self.assertRaisesRegex(ValueError, "tag or assets differ"):
+                    verify_online_release(root, "1.2.3")
+            release["prerelease"] = False
+
             release["body"] = "1.2.3 " + artifact.name
             with patch(
                 "scripts.release_gate.urllib.request.urlopen",
