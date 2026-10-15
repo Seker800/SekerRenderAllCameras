@@ -8,7 +8,7 @@
 - 67 个单元测试、7 个架构测试、Ruff、五包同源与版本门禁通过。
 - 五包均完成隔离安装、启用、实际四通道及单通道演示、禁用/卸载；跨版本功能契约通过。
 - 所有正式 Blender 偏好和启动文件哈希不变；没有替换用户安装。
-- 五个 GitHub 草稿资产已重新下载，SHA-256 全部与本地已测试包一致。
+- 五个 GitHub 公开资产已重新下载，SHA-256 全部与本地已测试包一致。
 
 | 失败步骤 | 本轮结果 |
 |---|---|
@@ -21,7 +21,7 @@
 
 4.0.2、4.1.1、5.2.1 的本轮 GUI Cycles 整批通过。以上失败原样保留，不用单次重试覆盖。只有 CPU 渲染覆盖，GPU 现场原因仍待诊断。用户已要求不继续第 6 项退出崩溃调查；渲染中崩溃和停滞仍是不同的发布限制。
 
-原始报告：`build/test-reports/20261015-151014-25468/summary.json`。GitHub 候选分支 `codex/release-0.8.0`；草稿含五包，尚未替换 Latest。
+原始报告：`build/test-reports/20261015-151014-25468/summary.json`。用户已明确授权带已知限制的测试版发布：main 与 [v0.8.0 Pre-release](https://github.com/Seker800/SekerRenderAllCameras/releases/tag/v0.8.0) 已更新，Latest 仍为 0.7.0。`--prerelease --verify-online` 完整通过；五个公开资产下载 SHA-256 与下表一致。正式发布门禁失败状态不变。
 
 ## 安装包与 SHA-256
 

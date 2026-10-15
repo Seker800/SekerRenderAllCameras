@@ -1,6 +1,6 @@
 # 0.8.0 提交、五包构建与 GitHub 发布
 
-- 状态 BLOCKED（正式发布门禁失败，候选分支与五包草稿已准备）；2026-10-15；用户明确要求 commit、push、按最新代码构建所有版本并更新 GitHub。
+- 状态 COMPLETED（按用户授权发布测试版；正式版门禁失败记录保留）；2026-10-15；用户明确要求 commit、push、按最新代码构建所有版本并更新 GitHub。
 - 权威：Commit规范、Commit与Push说明、发布插件、全量测试流程；版本源 `camera_batch_renderer/version.py`，五目标 `packaging/blender_targets.json`，公开身份 `packaging/release_contract.json`。
 - 范围：当前工作区已完成的渲染/集合/诊断及逻辑审查修复，统一为 0.8.0；不修改正式用户配置、语言或打开中的 Blender，不继续第 6 项退出崩溃调查。
 - 用户结果：GitHub 源码与对应五 ZIP 同源，首页链接和真实面板截图显示正确版本，Release 提供实际测试结果、限制与 SHA-256。
@@ -15,10 +15,17 @@
 
 - 已提交源码并推送候选分支，五包上传 GitHub 草稿且下载哈希 5/5 一致。真实 0.8.0 面板截图已更新。
 - 固定候选 f240a88 完整发布套件 88/6/0，五包安装及功能契约通过；详见 review/BLOCKED-0.8.0发布验证.md。
-- 正式 main / Latest 未替换。除用户已忽略的退出问题外，4.2.0 渲染中崩溃和 4.5.13 Cycles 停滞仍阻断正式发布；等待用户选择测试版发布、明确接受限制后正式发布，或保留草稿继续修复。
+- 用户后续明确选择测试版。main 已更新，Latest 保留 0.7.0；4.2.0 渲染中崩溃和 4.5.13 Cycles 停滞仍作为限制公开，不宣称正式门禁通过。
 
 ## 用户决定与测试版发布
 
 - 用户明确选择“发布为测试版，明确列出限制”；授权在保留 88/6/0 真实结果的前提下发布 Pre-release，不作为正式版本资格通过。Latest 保持 0.7.0。
 - 方案：测试版使用固定 v0.8.0 下载链接；发布校验增加显式 `--prerelease`，按标签读取且强制检查 prerelease=true，仍逐包校验来源、README、资产集合、版本和 SHA-256。默认正式版校验保持严格，不接受测试版替代。
 - 本轮不修改运行时代码或五个已安装验收的 ZIP，只修改发布工具、对应回归和文档；测试覆盖正式/测试通道不能互相冒充及固定标签下载。
+
+## 发布闭环
+
+- 已公开 https://github.com/Seker800/SekerRenderAllCameras/releases/tag/v0.8.0 ，`draft=false`、`prerelease=true`；标签指向 `6c060832694bb330ff7da6b8c58da6134101bc26`，main 已推送。
+- `python scripts/release_gate.py --prerelease --verify-online` 实际通过：固定标签/通道、五资产集合、版本/目标/完整 SHA-256、GitHub main README 字节，以及五个公开下载的 SHA-256 全部一致。
+- GitHub `/releases/latest` 回读仍为 v0.7.0，prerelease=false。五包沿用已安装验证的产物，运行时代码未再改动。
+- 发布工具回归 6 项通过，Ruff 通过；原发布套件 88/6/0 如实保留。本次没有调用 Blender 或改动真实用户配置。

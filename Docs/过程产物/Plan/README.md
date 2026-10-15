@@ -4,7 +4,7 @@
 
 ## 当前执行
 
-- `BLOCKED`：[`BLOCKED-0.8.0发布.md`](BLOCKED-0.8.0发布.md) — 源码已推候选分支，五包 GitHub 草稿与下载哈希完成；全量 88/6/0，等待确定已知限制下的发布方式。
+- `COMPLETED`：[`COMPLETED-0.8.0发布.md`](COMPLETED-0.8.0发布.md) — 用户明确授权测试版后，main 与 v0.8.0 Pre-release 已发布；五包公开下载哈希通过，Latest 保留 0.7.0，88/6/0 的已知限制公开。
 
 - `COMPLETED`：[`COMPLETED-Cycles与首次启动续查.md`](COMPLETED-Cycles与首次启动续查.md) — 第 4/7 项本轮续查及诊断文件机制已交付；两重点版本 CPU 回归完成，现场 GPU 根因仍待诊断文件，第 6 项按用户要求排除。
 - `BLOCKED`：[`BLOCKED-插件逻辑全面审查.md`](BLOCKED-插件逻辑全面审查.md) — 12 组逻辑问题已修复；五版本完整报告 86/3/0，原生 GUI 崩溃与 Cycles 停滞仍阻断完整验收。
