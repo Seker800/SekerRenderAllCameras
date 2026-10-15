@@ -1,5 +1,7 @@
 # Render All Cameras for Blender
 
+> **0.8.0 发布候选：88 项通过、6 项失败，尚未正式发布。** 下方 0.8.0 下载链接将在发布后生效；当前正式版仍为 [v0.7.0](https://github.com/Seker800/SekerRenderAllCameras/releases/tag/v0.7.0)。已知限制与验证记录见 [0.8.0 发布验证](Docs/过程产物/review/BLOCKED-0.8.0发布验证.md)。
+
 ## ⬇️ Download / 下载插件
 
 ### 第 1 步：确认自己的 Blender 版本
@@ -43,8 +45,8 @@ Material ID 和 JSON 清单。
 > Download the package whose name exactly matches Blender 4.0.2, 4.1.1, 4.2.0, 4.5 LTS, or
 > 5.2 LTS. Do not unzip it and do not substitute a package from another Blender line.
 >
-> The downloadable release and repository source are currently **0.8.0**. Choose the package for
-> your Blender version; all five packages share the same features.
+> This branch contains the **0.8.0 candidate**. The public stable release remains **0.7.0**
+> until the validation failures are resolved or an explicit release decision is made.
 
 ## Plugin at a glance
 
@@ -112,7 +114,9 @@ Material ID 中至少勾选一项（Beauty 默认开启），然后点击 **Rend
 
 The 0.8.0 candidate targets Blender **4.0.2, 4.1.1, 4.2.0, 4.5.13 LTS and 5.2.1 LTS**.
 Release validation covers real renders, installed packages, all four channels, cancellation,
-failure recovery and protected user preferences. The release notes record the actual results.
+failure recovery and protected user preferences. The complete suite returned **88 passed / 6 failed / 0 not_run**. All five installed-package
+contracts passed; the native GUI failures below still block normal release qualification.
+The release notes record the actual results.
 
 Cycles tests on this machine use CPU. Reports of missing GPU outputs are not confirmed resolved.
 Native Intel/OpenGL render-window and shutdown failures have occurred on this machine; successful

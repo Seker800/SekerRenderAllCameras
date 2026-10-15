@@ -1,6 +1,6 @@
 # 插件逻辑全面审查
 
-- 状态：ACTIVE；日期：2026-10-15；目标版本：packaging/blender_targets.json 的五个固定目标。
+- 状态：BLOCKED（逻辑审查与修复完成，完整 GUI 稳定性验收未通过）；日期：2026-10-15；目标版本：packaging/blender_targets.json 的五个固定目标。
 - 入口：用户要求全面 review 并修复问题。权威来源：PLAN.md、architecture/、reference/实现现状.md、workflow/全量测试流程.md。
 - 前置：保留现有未提交改动与独立 ACTIVE 计划；MCP 当前不能连接，现场只读检查不可用，使用隔离测试实例。
 - 可观察结果：不同 Camera/通道不互相覆盖；Alpha 符合原始透明度定义；错误不归到下一动作；失败仍恢复宿主状态；打开新文件后 handler 可用；辅助构造失败不泄漏资源。
@@ -17,5 +17,8 @@
 ## 进度
 
 - 基线：54 unit、7 architecture 通过。审查已定位命名碰撞、Alpha 复用条件不足、提交后错误归属及 finally 恢复路径问题。
-- M1/M2 完成：12 组问题与修复已记录在 review/ACTIVE-插件逻辑全面审查.md；新增先失败后通过的命名、清理、错误归属和取消测试，真实 Blender core/edge 覆盖 Alpha、构造回滚、上下文、空 ID、文件加载、子帧和裁切尺寸。
+- M1/M2 完成：12 组问题与修复已记录在 review/COMPLETED-插件逻辑全面审查.md；新增先失败后通过的命名、清理、错误归属和取消测试，真实 Blender core/edge 覆盖 Alpha、构造回滚、上下文、空 ID、文件加载、子帧和裁切尺寸。
 - 首轮完整入口 62/9/18，包含旧取消测试断言、4.2/4.5 GUI Cycles 异常和并行诊断功能编辑造成的包源码漂移；原报告保留。固定 `build/rv/` 源码快照重跑五目标，所有用户原有修改及并行新增功能保留。
+- M3 全套已执行：`build/rv/build/test-reports/20261015-145014-35308/summary.json` 为 86 passed / 3 failed / 0 not_run；五包安装态与跨版本契约通过，正式偏好哈希不变。当前工作区 67 unit、7 architecture 与 ruff 通过。
+- 阻断：4.1/4.2 active-shutdown 原生 GUI 进程失败、4.5 GUI Cycles 超时；4.1 复测通过、4.2 复测仍在界面绘制栈崩溃。原始证据与后续调查边界见完成的审查报告；不据此发布或替换真实安装。
+- 快照之后另一任务继续增强诊断字段/面板，代码改动已保留；完整报告覆盖快照，当前源码仅已补做普通 Python/架构/静态复核。后续解除阻断需在稳定且串行的图形环境取得 GUI 证据，再对最终源码重新完整验证。

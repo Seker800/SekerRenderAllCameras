@@ -1,5 +1,7 @@
 # 插件逻辑全面审查
 
+- 审查状态：COMPLETED；12 组明确逻辑问题已修复。完整验收仍受原生 GUI 稳定性失败阻断，不具备发布资格。
+
 - 日期：2026-10-15；对象：当前工作区 0.7.0 源码，包括已有未提交修复。
 - 范围：Domain 命名/调色板、Application 调度/取消、Blender 四通道/环境/事务、文件原子提交/JSON、Presentation 注册/回调/计时器、五目标装配与测试入口。
 - 用户打开的 Blender MCP 不可达；未操作该实例、用户 blend 或真实插件安装。原有 ACTIVE 计划及修改保留。
@@ -30,7 +32,20 @@
 - 首轮完整入口报告：`build/test-reports/20261015-143015-13628/summary.json`，62 passed / 9 failed / 18 not_run。6 项失败是旧 GUI 测试在 render 启动前点击停止却期待一张结果，现已拆为零张的立即停止与一张的活跃停止；4.2.0 Cycles 在视口 `immVertex3f → DRW_draw_cursor` 崩溃，4.5.13 Cycles 超时，原因未确认；构建过程中另一个任务增加诊断模块与事件，源码/ZIP 不一致，门禁阻止安装态测试。
 - 为避免并行编辑污染最终证据，在 `build/rv/` 固定合并源码（含新增诊断功能），`build/rv/source-hashes.json` 保存逐文件 SHA-256；以该目录为根重新执行完整入口。工作区 67 unit、7 architecture、ruff 通过。
 - 修订 GUI 测试：Workbench 同步渲染用 render_pre 只提交纯 coordinator 停止意图，禁止在 render handler 内调用 UI operator；Cycles 等待 job 活跃后由 UI timer 调用实际停止 operator。
-- 最终五版本完整报告：`build/rv/build/test-reports/20261015-145014-35308/summary.json`（执行中）。
+- 最终五版本完整报告：`build/rv/build/test-reports/20261015-145014-35308/summary.json`，**86 passed / 3 failed / 0 not_run**。五目标后台 core/edge、环境、集合、像素、压力、普通 GUI、五包装配/源码门禁、隔离安装/演示/卸载及跨版本契约通过。正式用户配置 SHA-256 前后一致。
+- 当前工作区最终复核：67 unit、7 architecture、ruff 通过。快照之后另一任务仅新增了 native_event 诊断字段、重启后诊断目录发现及相关面板/README 内容；完整安装态报告只对 `build/rv/source-hashes.json` 所标识的快照负责，不能冒充这些后续改动的完整验收。
+
+## 尚未解决的验证失败
+
+| 用例 | 证据 | 结论 |
+|---|---|---|
+| 4.1.1 active-shutdown | 首轮进程退出 3221226505，未产出成功标记；`build/rv/build/recheck-shutdown-411/summary.json` 复测退出 0 且成功 | 偶发原生失败，保留原失败；一次复测通过不能消除风险 |
+| 4.2.0 active-shutdown | 首轮退出 3221226505；`build/rv/build/recheck-shutdown-420/summary.json` 复测退出 11；crash 栈 `immVertex2f → view2d_draw_lines → action_main_region_draw`，伴随 Win32 170/6 | 原生 GUI 绘制异常复现，无 Python 断言失败；未确定驱动与插件交互的责任边界 |
+| 4.5.13 gui-cycles | 第二 Camera Beauty 已写出，随后 GPUDisplay texture/update 错误，240 秒测试时限触发 | GUI Cycles 停滞尚未解决；不能归因为渲染器算力或擅自用强制结束绕过 |
+
+- 4.0.2 Cycles 运行中也曾长时间显示错误，但最终恢复、输出成功标记且进程正常结束，因此最终报告记 passed；中途的停滞观察不能替代终态判定。4.1.1/4.2.0/5.2.1 Cycles 本轮通过，仍保留首轮曾出现的 4.2.0 崩溃记录。
+- 验证期间另一个聊天也在独立运行 Blender 诊断；源码已通过快照隔离，但共享图形驱动资源未隔离。因此以上失败是本机实测结果，不能据此断言所有用户设备必然复现。
+- 后续应在单一测试进程、能复现的图形环境下对照原生多次渲染、窗口切换和插件批次；继续记录 job 状态与 native checkpoint。此处不更换驱动/宿主版本，不将原生异常伪装成通过。
 
 ## 限制
 
