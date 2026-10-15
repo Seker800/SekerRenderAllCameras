@@ -10,11 +10,17 @@ from pathlib import Path
 import bpy
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
+from blender_test_safety import require_isolated_profile  # noqa: E402
+
+require_isolated_profile()
 PACKAGE_PARENT = Path(os.environ.get("RAC_PACKAGE_PARENT", REPO_ROOT))
 if str(PACKAGE_PARENT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_PARENT))
 
-import camera_batch_renderer  # noqa: E402
+WITH_ADDON = os.environ.get("RAC_HOST_CONTROL_WITH_ADDON", "1") != "0"
+if WITH_ADDON:
+    import camera_batch_renderer  # noqa: E402
 
 temporary = Path(tempfile.mkdtemp(prefix="rac-gui-host-control-"))
 started = False
@@ -29,7 +35,7 @@ def render_complete(*_args: object) -> None:
 def start_render() -> float | None:
     global started
     if started:
-        if not completed:
+        if not completed or bpy.app.is_job_running("RENDER"):
             return 0.1
         output = temporary / "host-control.png"
         if not output.is_file():
@@ -37,7 +43,11 @@ def start_render() -> float | None:
             os._exit(1)
         print("GUI_HOST_CONTROL_OK", flush=True)
         shutil.rmtree(temporary, ignore_errors=True)
-        bpy.ops.wm.quit_blender()
+        if WITH_ADDON:
+            camera_batch_renderer.unregister()
+        bpy.app.timers.register(
+            lambda: bpy.ops.wm.quit_blender() and None, first_interval=1.0
+        )
         return None
     started = True
     try:
@@ -54,7 +64,8 @@ def start_render() -> float | None:
 
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
-camera_batch_renderer.register()
+if WITH_ADDON:
+    camera_batch_renderer.register()
 scene = bpy.context.scene
 scene.render.engine = "BLENDER_WORKBENCH"
 scene.render.image_settings.file_format = "PNG"

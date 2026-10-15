@@ -6,6 +6,7 @@ import shutil
 import sys
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 import bpy
 
@@ -109,8 +110,7 @@ def main() -> None:
         light_collections[1].hide_render = True
         rig_two_layer.exclude = True
         environment_pairs = tuple(
-            (camera_objects[index], light_collections[index], worlds[index])
-            for index in range(2)
+            (camera_objects[index], light_collections[index], worlds[index]) for index in range(2)
         )
         original_camera = scene.camera
         original_filepath = scene.render.filepath
@@ -139,7 +139,10 @@ def main() -> None:
         assert_true(scene.camera == camera_objects[0], "Pair edit did not preview its camera")
         assert_true(scene.world == worlds[0], "Pair edit did not preview its World")
         assert_true(not light_objects[0].hide_viewport, "Preview hid the paired light")
-        assert_true(light_objects[1].hide_viewport, "Preview kept an unpaired light visible")
+        assert_true(
+            tuple(light.hide_viewport for light in light_objects) == original_light_viewport_states,
+            "Preview changed object viewport flags",
+        )
         assert_true(
             bpy.ops.render.camera_environment_pair_add() == {"FINISHED"},
             "Second environment pair add failed",
@@ -154,8 +157,11 @@ def main() -> None:
             not light_collections[1].hide_render,
             "Preview did not reveal a render-hidden light rig",
         )
-        assert_true(light_objects[0].hide_viewport, "Preview kept the other rig visible")
-        assert_true(not light_objects[1].hide_viewport, "Preview hid the selected rig")
+        assert_true(not light_objects[0].hide_viewport, "Preview changed other light object flag")
+        assert_true(
+            light_objects[1].hide_viewport == original_light_viewport_states[1],
+            "Preview changed selected light object flag",
+        )
         assert_true(
             light_collections[0].hide_render,
             "Preview did not disable the other paired collection",
@@ -165,8 +171,8 @@ def main() -> None:
             "Preview eye visibility kept the other rig visible",
         )
         assert_true(
-            light_objects[1].visible_get(view_layer=scene.view_layers[0]),
-            "Preview eye visibility hid the selected rig",
+            not rig_two_layer.hide_viewport,
+            "Preview did not reveal the selected collection root",
         )
         settings.environment_pair_index = 0
         assert_true(scene.camera == camera_objects[0], "Pair row selection did not switch camera")
@@ -176,7 +182,7 @@ def main() -> None:
             "Pair row selection did not enable its light collection",
         )
         assert_true(
-            light_collections[1].hide_render and rig_two_layer.exclude,
+            light_collections[1].hide_render and rig_two_layer.hide_viewport,
             "Pair row selection did not disable the previous light collection",
         )
         assert_true(
@@ -209,8 +215,12 @@ def main() -> None:
         switching.start()
         switching.prepare_current()
         assert_true(scene.world == worlds[1], "Camera 2 did not switch to its paired World")
-        assert_true(light_objects[0].hide_render, "Unpaired light was not disabled")
-        assert_true(not light_objects[1].hide_render, "Paired light was not enabled")
+        assert_true(
+            light_objects[0].hide_render == original_light_states[0], "Unpaired object flag changed"
+        )
+        assert_true(
+            light_objects[1].hide_render == original_light_states[1], "Paired object flag changed"
+        )
         assert_true(not rig_two_layer.exclude, "Render did not reveal the excluded light rig")
         assert_true(
             not light_collections[1].hide_render,
@@ -287,11 +297,10 @@ def main() -> None:
         )
         render_info = next(session.allocation.directory.glob("*_RenderInfo.json"))
         render_payload = json.loads(render_info.read_text(encoding="utf-8"))
-        environments = {
-            item["name"]: item["environment"] for item in render_payload["cameras"]
-        }
+        environments = {item["name"]: item["environment"] for item in render_payload["cameras"]}
         assert_true(
-            environments["Camera 2"] == {
+            environments["Camera 2"]
+            == {
                 "light_collection": "Light Rig 2",
                 "light_count": 1,
                 "world": "Camera World 2",
@@ -317,9 +326,7 @@ def main() -> None:
             assert_true(actual_colors - {(0, 0, 0)}, "Object ID image contains no labels")
         material_manifests = list(session.allocation.directory.glob("*_MaterialID.json"))
         assert_true(len(material_manifests) == 1, "Material ID manifest missing")
-        material_payload = json.loads(
-            material_manifests[0].read_text(encoding="utf-8")
-        )
+        material_payload = json.loads(material_manifests[0].read_text(encoding="utf-8"))
         material_names = {item["name"] for item in material_payload["materials"]}
         assert_true(
             {"Test Material A", "Test Material B"} <= material_names,
@@ -605,6 +612,67 @@ def main() -> None:
             "Material ID failure changed original material slots",
         )
 
+        # Construction failures must not strand datablocks before adapter ownership begins.
+        from camera_batch_renderer.blender import auxiliary
+        for constructor, configure_name in (
+            (auxiliary.AlphaScene, "set_scene_compositing"),
+            (auxiliary.ObjectIdScene, "_configure_id_render"),
+            (auxiliary.MaterialIdScene, "_configure_id_render"),
+        ):
+            scene_names = set(bpy.data.scenes.keys())
+            with patch.object(auxiliary, configure_name, side_effect=RuntimeError("injected init")):
+                try:
+                    constructor(scene, scene.camera, temporary / "injected.png")
+                except RuntimeError:
+                    pass
+                else:
+                    raise AssertionError("Expected auxiliary construction failure")
+            assert_true(set(bpy.data.scenes.keys()) == scene_names, "Constructor leaked Scene")
+
+        # The source Scene must win over whichever scene is currently in the window.
+        other_scene = bpy.data.scenes.new("Other Context")
+        try:
+            with bpy.context.temp_override(
+                scene=other_scene, view_layer=other_scene.view_layers[0]
+            ):
+                for constructor in (auxiliary.ObjectIdScene, auxiliary.MaterialIdScene):
+                    isolated = constructor(scene, scene.camera, temporary / "context.png")
+                    try:
+                        assert_true(bool(isolated.colors), "ID evaluated the wrong Scene")
+                    finally:
+                        isolated.cleanup()
+        finally:
+            bpy.data.scenes.remove(other_scene)
+
+        empty_scene = bpy.data.scenes.new("Empty ID")
+        empty_scene.collection.objects.link(scene.camera)
+        empty_scene.camera = scene.camera
+        empty_scene.render.resolution_x = 32
+        empty_scene.render.resolution_y = 32
+        empty_scene.view_layers[0].update()
+        try:
+            empty = run_batch_sync(empty_scene, include_beauty=False, include_object_id=True)
+            mapping = empty.allocation.directory / (
+                f"{empty.coordinator.plan.blend_name}_ObjectID.json"
+            )
+            assert_true(json.loads(mapping.read_text(encoding="utf-8"))["objects"] == [],
+                        "Empty ID render retained a previous batch's object mapping")
+        finally:
+            bpy.data.scenes.remove(empty_scene)
+
+        scene.frame_set(7, subframe=0.25)
+        run_batch_sync(scene, include_beauty=False, include_material_id=True)
+        assert_true(scene.frame_subframe == 0.25, "Batch reset the current subframe")
+
+        # Loading a different file clears non-persistent handlers in Blender.
+        from camera_batch_renderer.presentation.operators import _load_pre
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        assert_true(_load_pre in bpy.app.handlers.load_pre, "Load handler lost on file change")
+        from camera_batch_renderer.presentation.operators import _render_cancel, _render_complete
+        assert_true(_render_complete in bpy.app.handlers.render_complete,
+                    "Complete handler lost on file change")
+        assert_true(_render_cancel in bpy.app.handlers.render_cancel,
+                    "Cancel handler lost on file change")
         camera_batch_renderer.unregister()
         assert_true(not hasattr(bpy.types.Scene, "rac_settings"), "Scene settings leaked")
         from camera_batch_renderer.presentation.operators import (  # noqa: PLC0415

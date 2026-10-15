@@ -46,11 +46,9 @@ def _environment_specs(
         light_keys = None
         collection_name = None
         if collection is not None:
-            non_editable = next((obj for obj in light_objects if not is_editable_id(obj)), None)
-            if non_editable is not None:
+            if not is_editable_id(collection):
                 raise ValueError(
-                    "Light isolation requires editable lights; create a library override for "
-                    f'"{non_editable.name}"'
+                    f'Light collection requires a library override: "{collection.name}"'
                 )
             collection_key = id_key(collection)
             path = scene_collection_path(scene.collection, collection_key)
@@ -136,16 +134,16 @@ def build_render_plan(
         for camera in cameras
     )
     scale = scene.render.resolution_percentage / 100.0
-    width = max(1, round(scene.render.resolution_x * scale))
-    height = max(1, round(scene.render.resolution_y * scale))
+    width = max(1, int(scene.render.resolution_x * scale))
+    height = max(1, int(scene.render.resolution_y * scale))
     if scene.render.use_border and scene.render.use_crop_to_border:
         width = max(
             1,
-            round(width * (scene.render.border_max_x - scene.render.border_min_x)),
+            int(width * scene.render.border_max_x) - int(width * scene.render.border_min_x),
         )
         height = max(
             1,
-            round(height * (scene.render.border_max_y - scene.render.border_min_y)),
+            int(height * scene.render.border_max_y) - int(height * scene.render.border_min_y),
         )
     channels = []
     if include_beauty:

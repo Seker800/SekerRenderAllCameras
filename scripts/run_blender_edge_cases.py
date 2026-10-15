@@ -231,6 +231,9 @@ def main() -> None:
             file_output.file_slots[0].path = "side_effect_"
         node_signature = tuple(sorted(node.bl_idname for node in nodes))
         link_count = len(tree.links)
+        # Transparent Film alone does not make final Composite alpha reusable.
+        scene.render.film_transparent = True
+        scene.render.image_settings.color_mode = "RGBA"
         compositor_session = run_batch_sync(scene, include_alpha=True)
         compositor_results = compositor_session.coordinator.snapshot().results
         assert_true(len(compositor_results) == 4, "Compositor batch missed an action")
@@ -265,6 +268,14 @@ def main() -> None:
         summary["compositor"] = "Beauty composite, raw Alpha, and File Output node verified"
 
         set_compositing(scene, False)
+        # JPEG and RGB outputs discard alpha even with transparent Film enabled.
+        scene.render.image_settings.file_format = "JPEG"
+        jpeg_alpha = run_batch_sync(scene, include_alpha=True)
+        for result in jpeg_alpha.coordinator.snapshot().results:
+            if result.channel.value == "Alpha":
+                minimum, maximum = image_red_range(result.path)
+                assert_true(minimum < 0.05 and maximum > 0.95, "JPEG alpha was reused")
+        scene.render.image_settings.file_format = "PNG"
         scene.render.engine = "BLENDER_WORKBENCH"
         scene.render.use_border = True
         scene.render.use_crop_to_border = True
@@ -293,6 +304,20 @@ def main() -> None:
         assert_true(scene.render.use_crop_to_border, "Crop-to-border setting changed")
         assert_clean_output_directory(cropped.allocation.directory)
         summary["render_border"] = sizes
+
+        scene.render.resolution_x = 35
+        scene.render.resolution_y = 39
+        scene.render.resolution_percentage = 50
+        scene.render.border_min_x = 0.2
+        scene.render.border_max_x = 0.8
+        scene.render.border_min_y = 0.2
+        scene.render.border_max_y = 0.8
+        fractional = run_batch_sync(scene, include_alpha=True, include_object_id=True,
+                                    include_material_id=True)
+        expected = (fractional.coordinator.plan.settings.width,
+                    fractional.coordinator.plan.settings.height)
+        actual = {image_size(result.path) for result in fractional.coordinator.snapshot().results}
+        assert_true(actual == {expected}, f"Fractional size mismatch: {expected} vs {actual}")
 
         assert_true(
             fixture.read_bytes() == fixture_bytes,

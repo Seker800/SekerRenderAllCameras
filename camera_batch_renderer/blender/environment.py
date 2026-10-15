@@ -51,94 +51,67 @@ def layer_collections(
     return tuple(result)
 
 
-def _reveal_layer_subtree(
-    layer_collection: bpy.types.LayerCollection, *, viewport: bool
-) -> None:
-    layer_collection.exclude = False
-    if viewport:
-        layer_collection.hide_viewport = False
-    for child in layer_collection.children:
-        _reveal_layer_subtree(child, viewport=viewport)
+def set_layer_exclude(layer: bpy.types.LayerCollection, excluded: bool) -> None:
+    if layer.exclude == excluded:
+        return
+    descendants = []
+    pending = list(layer.children)
+    while pending:
+        child = pending.pop()
+        descendants.append((child, child.exclude, child.hide_viewport))
+        pending.extend(child.children)
+    layer.exclude = excluded
+    # Blender recursively changes child exclusions with the parent.
+    for child, child_excluded, hidden in descendants:
+        if child.exclude != child_excluded:
+            child.exclude = child_excluded
+        child.hide_viewport = hidden
 
 
-def _reveal_layer_path(
-    layer_collection: bpy.types.LayerCollection,
-    target_key: str,
-    *,
-    viewport: bool,
-) -> bool:
-    if id_key(layer_collection.collection) == target_key:
-        _reveal_layer_subtree(layer_collection, viewport=viewport)
-        return True
-    for child in layer_collection.children:
-        if _reveal_layer_path(child, target_key, viewport=viewport):
-            layer_collection.exclude = False
-            if viewport:
-                layer_collection.hide_viewport = False
-            return True
-    return False
-
-
-def reveal_collection(
+def set_collection_visibility(
     scene: bpy.types.Scene,
     view_layer: bpy.types.ViewLayer,
     collection_key: str,
     *,
+    enabled: bool,
     viewport: bool,
-) -> bpy.types.Collection:
+) -> None:
+    """Change only the registered collection root; preserve manual descendants."""
     path = scene_collection_path(scene.collection, collection_key)
     if path is None:
         raise LookupError("Paired light collection is no longer in the current scene")
-    for collection in path:
-        collection.hide_render = False
-        if viewport:
-            collection.hide_viewport = False
-    for collection in collection_tree(path[-1]):
-        collection.hide_render = False
-        if viewport:
-            collection.hide_viewport = False
-    if not _reveal_layer_path(
-        view_layer.layer_collection, collection_key, viewport=viewport
-    ):
-        raise LookupError("Paired light collection is unavailable in the current view layer")
-    return path[-1]
+    collection = path[-1]
+    collection.hide_render = not enabled
+    if viewport:
+        collection.hide_viewport = not enabled
+    for layer in layer_collections(view_layer):
+        if id_key(layer.collection) == collection_key:
+            # Excluding a layer destroys its object Base data, including users'
+            # per-object eye flags. Use collection visibility to hide presets.
+            if enabled and layer.exclude:
+                set_layer_exclude(layer, False)
+            if viewport:
+                layer.hide_viewport = not enabled
 
 
-def hide_collection(
+def switch_light_collections(
     scene: bpy.types.Scene,
     view_layer: bpy.types.ViewLayer,
-    collection_key: str,
-) -> None:
-    path = scene_collection_path(scene.collection, collection_key)
-    if path is None:
-        return
-    collection = path[-1]
-    collection.hide_render = True
-    collection.hide_viewport = True
-    for layer_collection in layer_collections(view_layer):
-        if id_key(layer_collection.collection) == collection_key:
-            layer_collection.exclude = True
-
-
-def isolate_lights(
-    scene: bpy.types.Scene,
-    allowed_keys: set[str],
+    selected_key: str,
+    registered_keys: tuple[str, ...],
     *,
     viewport: bool,
-    view_layer: bpy.types.ViewLayer | None = None,
 ) -> None:
-    for obj in scene.objects:
-        if obj.type != "LIGHT":
-            continue
-        enabled = id_key(obj) in allowed_keys
-        obj.hide_render = not enabled
-        if viewport:
-            obj.hide_viewport = not enabled
-            try:
-                obj.hide_set(not enabled, view_layer=view_layer)
-            except RuntimeError:
-                # An excluded collection removes the object from this View Layer.
-                pass
+    # Ancestors must remain under manual control; hiding one would hide selected too.
+    path = scene_collection_path(scene.collection, selected_key)
+    if path is None:
+        raise LookupError("Paired light collection is no longer in the current scene")
+    ancestors = {id_key(item) for item in path[:-1]}
+    for key in dict.fromkeys((*registered_keys, selected_key)):
+        if key not in ancestors:
+            set_collection_visibility(
+                scene, view_layer, key, enabled=key == selected_key, viewport=viewport
+            )
 
 
 def preview_environment(
@@ -153,17 +126,12 @@ def preview_environment(
     if camera is not None:
         scene.camera = camera
     if light_collection is not None:
-        key = id_key(light_collection)
-        reveal_collection(scene, view_layer, key, viewport=True)
-        isolate_lights(
+        switch_light_collections(
             scene,
-            {id_key(light) for light in collection_lights(light_collection)},
+            view_layer,
+            id_key(light_collection),
+            tuple(id_key(item) for item in other_light_collections),
             viewport=True,
-            view_layer=view_layer,
         )
-        for other in other_light_collections:
-            other_key = id_key(other)
-            if other_key != key:
-                hide_collection(scene, view_layer, other_key)
     if world is not None:
         scene.world = world

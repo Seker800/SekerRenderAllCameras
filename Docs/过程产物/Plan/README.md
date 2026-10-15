@@ -4,6 +4,11 @@
 
 ## 当前执行
 
+- `COMPLETED`：[`COMPLETED-Cycles与首次启动续查.md`](COMPLETED-Cycles与首次启动续查.md) — 第 4/7 项本轮续查及诊断文件机制已交付；两重点版本 CPU 回归完成，现场 GPU 根因仍待诊断文件，第 6 项按用户要求排除。
+- `ACTIVE`：[`ACTIVE-插件逻辑全面审查.md`](ACTIVE-插件逻辑全面审查.md) — 全层源码审查、错误路径与输出正确性修复，正在执行五版本验证。
+
+- `BLOCKED`：[`BLOCKED-渲染可观察性与集合显隐.md`](BLOCKED-渲染可观察性与集合显隐.md) — 已修复首次启动文件锁、像素内存和渲染中注销风险；最新重点套件 39/40 通过，4.0.2 重绘异常与 Cycles GPU 覆盖仍阻断，两个版本均有无插件 Intel GL 退出崩溃证据。
+
 - `COMPLETED`：[`COMPLETED-发布契约与五包同源门禁.md`](COMPLETED-发布契约与五包同源门禁.md) — 统一公开身份与资产名，并在五个安装包上验证输出选项与单通道语义；尚未执行线上发布。
 - `COMPLETED`：[`COMPLETED-可选Beauty与隐藏工作目录.md`](COMPLETED-可选Beauty与隐藏工作目录.md) — Beauty 与三个 ID/Alpha 通道并列可选，运行期文件集中到一个固定隐藏工作目录；五版本完整开发门禁 63/63 通过。
 - `COMPLETED`：[`COMPLETED-分版本Blender适配与发布矩阵.md`](COMPLETED-分版本Blender适配与发布矩阵.md) — 共享纯核心，按 4.0.2、4.1.1、4.2.0、4.5 LTS、5.2 LTS 分别装配宿主实现、测试和发布，并完成五个线上资产哈希回读。

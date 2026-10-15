@@ -13,6 +13,10 @@ from pathlib import Path
 import bpy
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
+from blender_test_safety import require_isolated_profile  # noqa: E402
+
+require_isolated_profile()
 PACKAGE_PARENT = Path(os.environ.get("RAC_PACKAGE_PARENT", REPO_ROOT))
 if str(PACKAGE_PARENT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_PARENT))
@@ -21,6 +25,7 @@ import camera_batch_renderer  # noqa: E402
 from camera_batch_renderer.infrastructure.storage import WORK_DIRECTORY_NAME  # noqa: E402
 from camera_batch_renderer.presentation import runtime_state  # noqa: E402
 from camera_batch_renderer.presentation.host_policy import (  # noqa: E402
+    HOST_DRIVER_CLASS,
     OPERATOR_START_RESULT,
 )
 
@@ -29,6 +34,8 @@ atexit.register(shutil.rmtree, temporary, True)
 started_at = time.monotonic()
 phase = "start_success"
 max_window_count = 0
+render_heartbeat_count = 0
+fixture_bytes = None
 original_camera = None
 original_filepath = ""
 original_world = None
@@ -50,13 +57,20 @@ def invoke_from_view3d(operator) -> set[str]:
 
 
 def prepare_scene() -> None:
-    global original_camera, original_filepath, original_world, original_light_states
+    global original_camera, original_filepath, original_world, original_light_states, fixture_bytes
     bpy.ops.wm.read_factory_settings(use_empty=True)
     scene = bpy.context.scene
-    scene.render.engine = "BLENDER_WORKBENCH"
+    scene.render.engine = os.environ.get("RAC_TEST_ENGINE", "BLENDER_WORKBENCH")
+    if scene.render.engine == "CYCLES":
+        scene.cycles.device = "CPU"
+        scene.cycles.samples = int(os.environ.get("RAC_TEST_SAMPLES", "256"))
+        scene.cycles.use_adaptive_sampling = False
+        scene.cycles.use_denoising = False
     scene.render.image_settings.file_format = "PNG"
     scene.render.resolution_x = 32
     scene.render.resolution_y = 32
+    if scene.render.engine == "CYCLES":
+        scene.render.resolution_x = scene.render.resolution_y = 512
     scene.render.resolution_percentage = 100
     scene.render.filepath = "original-output"
     bpy.ops.mesh.primitive_cube_add()
@@ -88,6 +102,7 @@ def prepare_scene() -> None:
     original_light_states = tuple(light.hide_render for light in environment_lights)
     paired_world = bpy.data.worlds.new("GUI Camera World")
     bpy.ops.wm.save_as_mainfile(filepath=str(temporary / "GUI Fixture.blend"))
+    fixture_bytes = (temporary / "GUI Fixture.blend").read_bytes()
     camera_batch_renderer.register()
     scene.rac_settings.include_material_id = True
     pair = scene.rac_settings.environment_pairs.add()
@@ -114,7 +129,11 @@ def validate_result() -> None:
     assert_true(len(manifests) == 1, "GUI RenderInfo is missing")
     payload = json.loads(manifests[0].read_text(encoding="utf-8"))
     assert_true(payload["status"] == "completed", "GUI batch did not complete")
-    assert_true(len(payload["results"]) == 6, "GUI results were not fully recorded")
+    expected_count = 12 if os.environ.get("RAC_TEST_ENGINE") == "CYCLES" else 6
+    assert_true(len(payload["results"]) == expected_count, "GUI results were not fully recorded")
+    if expected_count == 12:
+        assert_true(len(list(output.glob("*_Alpha_*.png"))) == 3, "Cycles Alpha outputs missing")
+        assert_true(len(list(output.glob("*_ObjectID_*.png"))) == 3, "Cycles Object ID missing")
     assert_true(scene.camera == original_camera, "GUI test did not restore active camera")
     assert_true(scene.render.filepath == original_filepath, "GUI test did not restore filepath")
     assert_true(scene.world == original_world, "GUI test did not restore World")
@@ -135,7 +154,17 @@ def validate_result() -> None:
         not any(item.name.startswith("RAC_") for item in bpy.data.materials),
         "GUI Material ID render leaked temporary materials",
     )
-    assert_true(max_window_count == 1, "GUI batch opened a separate render window")
+    if HOST_DRIVER_CLASS.display_type == "WINDOW":
+        assert_true(max_window_count >= 2, "GUI batch did not open a render window")
+    else:
+        assert_true(
+            any(
+                area.type == "IMAGE_EDITOR"
+                for window in bpy.context.window_manager.windows
+                for area in window.screen.areas
+            ),
+            "Render view did not open",
+        )
 
 
 def start_material_only_test() -> None:
@@ -144,6 +173,7 @@ def start_material_only_test() -> None:
     settings.include_alpha = False
     settings.include_object_id = False
     settings.include_material_id = True
+    bpy.context.preferences.view.render_display_type = "NONE"
     result = invoke_from_view3d(bpy.ops.render.render_all_cameras)
     assert_true(result == OPERATOR_START_RESULT, f"Material-only batch did not start: {result}")
 
@@ -152,6 +182,21 @@ def validate_material_only_result() -> None:
     output = temporary / "SekerRenderAllCameras"
     manifest = next(output.glob("*_RenderInfo.json"))
     payload = json.loads(manifest.read_text(encoding="utf-8"))
+    assert_true(
+        bpy.context.preferences.view.render_display_type == "NONE",
+        "Material-only batch changed NONE display preference",
+    )
+    assert_true(
+        any(
+            area.type == "IMAGE_EDITOR"
+            and area.spaces.active.image is not None
+            and area.spaces.active.image.type == "RENDER_RESULT"
+            for window in bpy.context.window_manager.windows
+            for area in window.screen.areas
+        ),
+        "Consecutive batch hid Render Result",
+    )
+    bpy.context.preferences.view.render_display_type = "WINDOW"
     assert_true(payload["channels"] == ["MaterialID"], "GUI channel selection drifted")
     assert_true(len(payload["results"]) == 3, "Material-only GUI result count is wrong")
     assert_true(
@@ -164,12 +209,7 @@ def validate_material_only_result() -> None:
     )
 
 
-def start_cancel_test() -> None:
-    settings = bpy.context.scene.rac_settings
-    settings.include_beauty = True
-    settings.include_material_id = False
-    result = invoke_from_view3d(bpy.ops.render.render_all_cameras)
-    assert_true(result == OPERATOR_START_RESULT, f"Cancel batch did not start: {result}")
+def request_cancel(*_args: object) -> None:
     assert_true(
         invoke_from_view3d(bpy.ops.render.cancel_all_cameras) == {"FINISHED"},
         "Cancel request was rejected",
@@ -177,13 +217,32 @@ def start_cancel_test() -> None:
     assert_true(runtime_state.render_event is None, "Cancel request forged a render event")
 
 
-def validate_cancel_result() -> None:
+def request_sync_cancel(*_args: object) -> None:
+    bpy.app.handlers.render_pre.remove(request_sync_cancel)
+    # The synchronous Workbench call blocks UI timers. Only submit the pure
+    # coordinator intent here; never invoke a UI operator from a render handler.
+    runtime_state.active_session.coordinator.request_cancel()
+
+
+def start_cancel_test(*, immediate: bool) -> None:
+    settings = bpy.context.scene.rac_settings
+    settings.include_beauty = True
+    settings.include_material_id = False
+    result = invoke_from_view3d(bpy.ops.render.render_all_cameras)
+    assert_true(result == OPERATOR_START_RESULT, f"Cancel batch did not start: {result}")
+    if immediate:
+        request_cancel()
+    elif bpy.context.scene.render.engine == "BLENDER_WORKBENCH":
+        bpy.app.handlers.render_pre.append(request_sync_cancel)
+
+
+def validate_cancel_result(*, expected_results: int) -> None:
     output = temporary / "SekerRenderAllCameras"
     images = list(output.glob("*_Beauty_*.png"))
     manifest = next(output.glob("*_RenderInfo.json"))
     payload = json.loads(manifest.read_text(encoding="utf-8"))
     assert_true(payload["status"] == "cancelled", "GUI cancel status is wrong")
-    assert_true(len(payload["results"]) == 1, "GUI cancel did not finish the current image")
+    assert_true(len(payload["results"]) == expected_results, "GUI stop boundary is wrong")
     assert_true(len(images) == 3, "GUI cancel removed old images that were not regenerated")
     assert_true(
         (output / WORK_DIRECTORY_NAME / ".incomplete").is_file(),
@@ -201,9 +260,11 @@ def validate_cancel_result() -> None:
 
 
 def poll() -> float | None:
-    global max_window_count, phase
+    global max_window_count, phase, render_heartbeat_count
     try:
         elapsed = time.monotonic() - started_at
+        if bpy.app.is_job_running("RENDER"):
+            render_heartbeat_count += 1
         max_window_count = max(max_window_count, len(bpy.context.window_manager.windows))
         if phase == "start_success":
             settings = bpy.context.scene.rac_settings
@@ -226,6 +287,9 @@ def poll() -> float | None:
             )
             settings.include_beauty = True
             settings.include_material_id = True
+            if os.environ.get("RAC_TEST_ENGINE") == "CYCLES":
+                settings.include_alpha = True
+                settings.include_object_id = True
             result = invoke_from_view3d(bpy.ops.render.render_all_cameras)
             assert_true(result == OPERATOR_START_RESULT, f"GUI batch did not start: {result}")
             assert_true(
@@ -241,16 +305,38 @@ def poll() -> float | None:
             return 0.1
         if phase == "material_only" and runtime_state.active_session is None:
             validate_material_only_result()
-            start_cancel_test()
+            start_cancel_test(immediate=True)
+            phase = "idle_cancel"
+            return 0.1
+        if phase == "idle_cancel" and runtime_state.active_session is None:
+            validate_cancel_result(expected_results=0)
+            start_cancel_test(immediate=False)
             phase = "cancel"
             return 0.1
+        if phase == "cancel" and bpy.app.is_job_running("RENDER"):
+            session = runtime_state.active_session
+            if session is not None and not session.coordinator.snapshot().cancel_requested:
+                request_cancel()
         if phase == "cancel" and runtime_state.active_session is None:
-            validate_cancel_result()
+            validate_cancel_result(expected_results=1)
+            assert_true(
+                (temporary / "GUI Fixture.blend").read_bytes() == fixture_bytes,
+                "Batch saved the input blend",
+            )
+            if os.environ.get("RAC_TEST_ENGINE") == "CYCLES":
+                assert_true(
+                    render_heartbeat_count >= 20,
+                    f"Cycles UI did not stay responsive: {render_heartbeat_count}",
+                )
+            print(f"GUI_HEARTBEATS {render_heartbeat_count}", flush=True)
             camera_batch_renderer.unregister()
             print("GUI_RENDER_TESTS_OK", flush=True)
-            bpy.ops.wm.quit_blender()
+            for window in list(bpy.context.window_manager.windows)[1:]:
+                with bpy.context.temp_override(window=window):
+                    bpy.ops.wm.window_close()
+            bpy.app.timers.register(lambda: bpy.ops.wm.quit_blender() and None, first_interval=1.0)
             return None
-        if elapsed > 20.0:
+        if elapsed > 240.0:
             raise TimeoutError("GUI batch stalled after a missed render_complete event")
         return 0.1
     except Exception:

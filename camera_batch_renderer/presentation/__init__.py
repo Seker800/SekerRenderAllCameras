@@ -36,6 +36,18 @@ def register() -> None:
 
 def unregister() -> None:
     session = runtime_state.active_session
+    driver = runtime_state.active_operator
+    if session is not None and bpy.app.is_job_running("RENDER"):
+        if driver is None:
+            raise RuntimeError("Cannot disable an active render without its owning driver")
+        driver.defer_shutdown(_unregister_idle)
+        session.scene.rac_settings.status_text = "Stopping current image before disabling add-on"
+        return
+    _unregister_idle()
+
+
+def _unregister_idle() -> None:
+    session = runtime_state.active_session
     operator = runtime_state.active_operator
     if session is not None:
         session.cancel()

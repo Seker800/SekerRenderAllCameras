@@ -13,6 +13,26 @@ from camera_batch_renderer.domain.naming import (
 
 
 class NamingTests(unittest.TestCase):
+    def test_generated_suffix_does_not_collide_with_literal_camera_name(self):
+        result = camera_specs((("a", "Cam/A"), ("b", "Cam:A"), ("c", "Cam_A_02")))
+        self.assertEqual(len({item.output_name.casefold() for item in result}), 3)
+
+    def test_long_camera_names_stay_distinct_in_final_filenames(self):
+        settings = RenderSettings("CYCLES", "Cycles", 32, 32, "PNG", ".png")
+        cameras = camera_specs((("a", "C" * 70 + "A"), ("b", "C" * 70 + "B")))
+        names = [output_filename(blend_name="shot", camera_name=camera.output_name,
+                                 channel=Channel.BEAUTY, settings=settings) for camera in cameras]
+        self.assertEqual(len(set(names)), 2)
+
+    def test_path_shortening_preserves_camera_and_channel_identity(self):
+        directory = Path("x" * 170)
+        first = fit_path(directory, "a" * 100 + "_Beauty.png")
+        second = fit_path(directory, "a" * 100 + "_Alpha.png")
+        self.assertNotEqual(first, second)
+
+    def test_unicode_numeric_character_does_not_crash_natural_sort(self):
+        self.assertIsInstance(natural_key("Camera①²⑩"), tuple)
+
     def test_natural_sort(self):
         values = ["Camera10", "camera2", "Camera1"]
         self.assertEqual(sorted(values, key=natural_key), ["Camera1", "camera2", "Camera10"])

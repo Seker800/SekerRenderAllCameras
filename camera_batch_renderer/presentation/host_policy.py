@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from .host_drivers import ModalEventDriver
+from .host_drivers import AsyncTimerDriver
 
 TARGET_ID = "development"
 SUPPORTED_VERSION_MIN = (4, 0, 2)
 TARGET_LABEL = "4.0.2+"
 SUPPORTED_VERSION_MAX = None
-HOST_DRIVER_CLASS = ModalEventDriver
-OPERATOR_START_RESULT = {"RUNNING_MODAL"}
+HOST_DRIVER_CLASS = AsyncTimerDriver
+OPERATOR_START_RESULT = {"FINISHED"}
 
 
 def ensure_supported_version() -> None:

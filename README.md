@@ -10,23 +10,23 @@
 
 | 你的 Blender 版本 | 点击这里下载插件 |
 |---|---|
-| **4.0.2–4.0.x** | **[⬇️ Render All Cameras 0.7.0 · Blender 4.0.2](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/RenderAllCameras-0.7.0-blender-4.0.2.zip)** |
-| **4.1.1–4.1.x** | **[⬇️ Render All Cameras 0.7.0 · Blender 4.1.1](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/RenderAllCameras-0.7.0-blender-4.1.1.zip)** |
-| **4.2.x** | **[⬇️ Render All Cameras 0.7.0 · Blender 4.2.0](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/RenderAllCameras-0.7.0-blender-4.2.0.zip)** |
-| **4.5.x LTS** | **[⬇️ Render All Cameras 0.7.0 · Blender 4.5 LTS](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/RenderAllCameras-0.7.0-blender-4.5-lts.zip)** |
-| **5.2.x LTS** | **[⬇️ Render All Cameras 0.7.0 · Blender 5.2 LTS](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/RenderAllCameras-0.7.0-blender-5.2-lts.zip)** |
+| **4.0.2–4.0.x** | **[⬇️ Render All Cameras 0.8.0 · Blender 4.0.2](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/RenderAllCameras-0.8.0-blender-4.0.2.zip)** |
+| **4.1.1–4.1.x** | **[⬇️ Render All Cameras 0.8.0 · Blender 4.1.1](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/RenderAllCameras-0.8.0-blender-4.1.1.zip)** |
+| **4.2.x** | **[⬇️ Render All Cameras 0.8.0 · Blender 4.2.0](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/RenderAllCameras-0.8.0-blender-4.2.0.zip)** |
+| **4.5.x LTS** | **[⬇️ Render All Cameras 0.8.0 · Blender 4.5 LTS](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/RenderAllCameras-0.8.0-blender-4.5-lts.zip)** |
+| **5.2.x LTS** | **[⬇️ Render All Cameras 0.8.0 · Blender 5.2 LTS](https://github.com/Seker800/SekerRenderAllCameras/releases/latest/download/RenderAllCameras-0.8.0-blender-5.2-lts.zip)** |
 
 > 下载得到 `.zip` 文件后，**不要解压**。也不要下载页面底部 GitHub 自动提供的 `Source code (zip)`，它不是可安装的插件。
-> ZIP 文件名和 Blender 安装列表、面板名称都标明插件版本及目标 Blender 版本，例如 **Render All Cameras 0.7.0 (Blender 4.0.2)**。内部模块标识仍为 `camera_batch_renderer`，升级时不会生成另一款插件。
+> ZIP 文件名和 Blender 安装列表、面板名称都标明插件版本及目标 Blender 版本，例如 **Render All Cameras 0.8.0 (Blender 4.0.2)**。内部模块标识仍为 `camera_batch_renderer`，升级时不会生成另一款插件。
 
 ### 第 3 步：在 Blender 中安装
 
 - **Blender 4.0 / 4.1：**打开 **编辑 → 偏好设置 → 插件 → 安装**，选择刚下载的 ZIP，然后勾选启用 **Render All Cameras**。
 - **Blender 4.2 / 4.5 / 5.2：**打开 **编辑 → 偏好设置 → 获取扩展**，点击右上角菜单，选择 **从磁盘安装**，然后选择刚下载的 ZIP。
 
-**更新已有插件后必须重启 Blender：**先保存正在编辑的内容，完全退出 Blender（关闭所有窗口），再重新打开。安装列表可能已显示 0.7.0，但未重启的面板仍在运行旧版代码（例如显示 Version 0.6.0、缺少 Beauty 开关）。重启后请在面板底部确认版本为 **0.7.0**，并确认能看到 **Render Beauty** 选项；未确认前不要开始批量渲染。
+**更新已有插件后必须重启 Blender：**先保存正在编辑的内容，完全退出 Blender（关闭所有窗口），再重新打开。安装列表可能已显示 0.8.0，但未重启的面板仍在运行旧版代码（例如显示 Version 0.6.0、缺少 Beauty 开关）。重启后请在面板底部确认版本为 **0.8.0**，并确认能看到 **Render Beauty** 选项；未确认前不要开始批量渲染。
 
-如果表格里没有你的 Blender 版本，表示该版本目前没有经过完整测试，请不要随便选择其他版本的包。全部文件也可以在 **[v0.7.0 发布页面](https://github.com/Seker800/SekerRenderAllCameras/releases/tag/v0.7.0)** 查看。
+如果表格里没有你的 Blender 版本，表示该版本目前没有经过完整测试，请不要随便选择其他版本的包。全部文件也可以在 **[v0.8.0 发布页面](https://github.com/Seker800/SekerRenderAllCameras/releases/tag/v0.8.0)** 查看。
 
 **One-click batch rendering for every camera in a Blender scene.** Render still images with
 automatic filenames, per-camera light/World environments, optional alpha masks, Object ID maps,
@@ -36,19 +36,19 @@ Material ID maps, and JSON manifests.
 Material ID 和 JSON 清单。
 
 [![Latest release](https://img.shields.io/github/v/release/Seker800/SekerRenderAllCameras)](https://github.com/Seker800/SekerRenderAllCameras/releases/latest)
-[![Current source](https://img.shields.io/badge/Current_source-0.7.0-green)](#whats-new-in-070)
+[![Current source](https://img.shields.io/badge/Current_source-0.8.0-green)](#whats-new-in-080)
 [![Five tested Blender lines](https://img.shields.io/badge/Blender-5_separate_tested_packages-F5792A?logo=blender&logoColor=white)](#compatibility)
 [![License: GPL v3+](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](LICENSE)
 
 > Download the package whose name exactly matches Blender 4.0.2, 4.1.1, 4.2.0, 4.5 LTS, or
 > 5.2 LTS. Do not unzip it and do not substitute a package from another Blender line.
 >
-> The downloadable release and repository source are currently **0.7.0**. Choose the package for
+> The downloadable release and repository source are currently **0.8.0**. Choose the package for
 > your Blender version; all five packages share the same features.
 
 ## Plugin at a glance
 
-[![Render All Cameras 0.7.0 plugin panel with selectable Beauty, Alpha, Object ID, Material ID and camera environments](Docs/images/plugin-quick-start.jpg)](Docs/images/plugin-quick-start.jpg)
+[![Render All Cameras 0.8.0 plugin panel with selectable Beauty, Alpha, Object ID, Material ID and camera environments](Docs/images/plugin-quick-start.jpg)](Docs/images/plugin-quick-start.jpg)
 
 Save the `.blend`, press <kbd>N</kbd> in the 3D Viewport, open **Batch Render**, choose at least one of
 Beauty/Alpha/Object ID/Material ID, and click **Render All Cameras**. Beauty starts enabled. The plugin
@@ -57,16 +57,19 @@ renders every usable camera to the fixed `SekerRenderAllCameras/` folder next to
 中文：保存 `.blend`，在 3D 视图按 <kbd>N</kbd>，打开 **Batch Render**；从 Beauty / Alpha / Object ID /
 Material ID 中至少勾选一项（Beauty 默认开启），然后点击 **Render All Cameras**。上图点击可查看原始尺寸。
 
-## What's new in 0.7.0
+## What's new in 0.8.0
 
-- Beauty is now a normal output checkbox, enabled by default. Users may render only Alpha, only
-  Object ID, only Material ID, or any combination without an implicit Beauty render.
-- When no channel is selected, the plug-in stops before creating output files and explains what to
-  select.
-- Runtime staging, progress markers, and atomic-write temporary files now live under one fixed
-  hidden working directory; successful batches remove it completely.
+- Open Blender's Render Result window for batch progress; wait for native Cycles/EEVEE jobs to
+  finish before committing outputs or switching cameras.
+- Switch only registered preset Collection roots; preserve object flags, hidden children and
+  unrelated Collections.
+- Retry brief Windows staging-file locks, show startup errors, and reduce Alpha/ID export memory.
+- Preserve one diagnostic JSON per request, including failures before rendering starts. Click
+  **Open Diagnostics** and send the relevant `Render-*.json` files when reporting a problem.
+- Fix filename collisions, Alpha reuse after compositing, failure recovery, stop-between-images,
+  persistent handlers after file loading, ID scene context and cropped output dimensions.
 
-中文：Beauty 现在与 Alpha、Object ID、Material ID 一样可以自由勾选，默认仍开启；支持只渲染任意单一通道。运行期临时文件集中到一个隐藏工作目录，成功后整体清理。
+中文：渲染时打开结果窗口；预设只切换登记的集合根；修复短暂文件占用、文件名冲突、Alpha 复用和异常恢复等问题。报错时点击 **Open Diagnostics**，发送对应 JSON 即可。默认位置为 `.blend` 同级的 `SekerRenderAllCameras/Diagnostics/`；不可写时尝试系统临时目录下的 `RenderAllCameras-Diagnostics/`。记录含版本、设备、摄影机、通道、路径、异常和最后检查点，不自动上传，重试不会覆盖旧记录。
 
 ### Included in 0.6.0
 
@@ -94,26 +97,30 @@ Material ID 中至少勾选一项（Beauty 默认开启），然后点击 **Rend
 
 - Pair any camera with an optional light Collection, an optional Blender World, or both.
 - Selecting a pairing immediately previews its camera, light rig, and World in the current scene.
-- While a paired camera renders, only lights inside its paired Collection (including child
-  Collections) are enabled; other scene lights are temporarily ignored. A paired Collection may be
-  hidden or excluded before the run—the plugin reveals it when needed and restores that state later.
+- While a paired camera renders, its registered preset Collection is enabled and other registered
+  preset Collections are hidden. Object flags, manually hidden children, parents, and unregistered
+  Collections keep their visibility. Use dedicated light Collections; non-light objects in a preset
+  follow their Collection. Render-time changes are restored afterward.
 - Unpaired cameras keep the scene state captured at batch start. All render-time visibility and
   World changes are restored after completion, cancellation, or failure.
 - Output still uses the fixed `SekerRenderAllCameras/` folder: new matching images replace old ones,
   while images not generated in the current run remain untouched.
 
-中文：选中不同配对行会立即切换摄影机、灯组和 World。灯光 Collection 即使事先被隐藏或从 View Layer 排除，渲染时也会自动启用，完成、取消或失败后恢复任务开始时的状态。
+中文：选中配对行切换摄影机、已登记灯组集合根和 World；保留对象、子集合、父级及无关集合的手动显隐。批次开始时打开原生渲染结果窗口，Cycles/EEVEE 异步执行并显示进度，完成、取消或失败后恢复批次前状态。
 
-### Verified in five Blender versions
+### Validation and known limits
 
-Release 0.7.0 passed the complete 63-step release suite in Blender **4.0.2, 4.1.1, 4.2.0,
-4.5.13 LTS, and 5.2.1 LTS**, with zero failures and zero skipped release checks. Every version ran
-real background and GUI renders, all four output channels, edge cases, a 50-camera batch, ten
-repeated batches, wrong-package rejection, clean installation, installed-package rendering, and
-removal. The five installed packages also produced matching functional contracts.
+The 0.8.0 candidate targets Blender **4.0.2, 4.1.1, 4.2.0, 4.5.13 LTS and 5.2.1 LTS**.
+Release validation covers real renders, installed packages, all four channels, cancellation,
+failure recovery and protected user preferences. The release notes record the actual results.
 
-中文：0.7.0 已分别在 Blender **4.0.2、4.1.1、4.2.0、4.5.13 LTS、5.2.1 LTS** 中完成真实测试；
-共 63 项通过、0 项失败、0 项未运行。不是只测试代码导入，而是实际安装插件、从界面和后台渲染、检查输出，再执行禁用和卸载。
+Cycles tests on this machine use CPU. Reports of missing GPU outputs are not confirmed resolved.
+Native Intel/OpenGL render-window and shutdown failures have occurred on this machine; successful
+short batches do not establish that those failures are fixed. An unfinished diagnostic JSON records
+the last checkpoint, not a native crash stack or a confirmed cause. Startup may also spend time
+compiling kernels before progress becomes visible.
+
+中文：五个目标分别验证，准确测试结果见本版发布说明。当前机器仅覆盖 Cycles CPU；朋友现场的 GPU 不出图原因尚未确认。测试中出现过原生 Intel/OpenGL 渲染窗口及退出异常，不能以短批次通过宣称彻底解决。诊断文件保留最后检查点，原生崩溃未必能留下 Python 报错。
 
 ## Why use it?
 
@@ -156,8 +163,8 @@ ProductShot_MaterialID.json
 3. Click **Install…**, choose the downloaded ZIP, then enable **Render: Render All Cameras**.
 
 **Restart Blender after updating an existing installation.** Save your work, close every Blender
-window, and reopen Blender. The add-on list may already show 0.7.0 while an open panel is still
-running 0.6.0 code. Before rendering, confirm the panel shows **Version 0.7.0** and a
+window, and reopen Blender. The add-on list may already show 0.8.0 while an open panel is still
+running 0.6.0 code. Before rendering, confirm the panel shows **Version 0.8.0** and a
 **Render Beauty** checkbox.
 
 ## Quick start
@@ -167,14 +174,14 @@ running 0.6.0 code. Before rendering, confirm the panel shows **Version 0.7.0** 
 3. Open **Batch Render → Render All Cameras**.
 4. Enable Alpha, Object ID, and/or Material ID if needed.
 5. Optional: under **Camera Environments**, press **+**, choose a Camera, then choose a Light
-   Collection and/or World. Child Collections are included automatically.
+   Collection and/or World. Child Collections retain their manual visibility.
 6. Click **Render All Cameras**.
 
 Leave **Light Collection** blank to keep all scene lights. Leave **World** blank to keep the scene
 World. A paired light Collection must belong to the current Scene; it may start hidden or excluded.
 Each camera can have at most one pairing; unpaired cameras use the state captured at batch start.
-Linked-library lights need editable library overrides because the plugin must temporarily change
-their render visibility.
+Paired Collections must be editable (use library overrides for linked Collections). The plugin does
+not change individual light visibility. Hidden parent Collections continue to hide their children.
 
 The same controls are also available under **Output Properties → Render All Cameras**. Results are
 written next to the `.blend` file:

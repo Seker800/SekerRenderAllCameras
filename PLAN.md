@@ -139,6 +139,7 @@ scene.objects 中所有 type == 'CAMERA' 且 data 有效的对象
 3. 新图先写入输出目录内唯一的固定隐藏工作目录，成功后使用原子替换覆盖同名旧图；成功完成后整体删除工作目录。
 4. 未进入本次计划、未成功生成或取消后尚未执行的输出不碰触已有文件。
 5. `.inprogress`、`.incomplete`、staging 和 JSON 临时文件都位于固定隐藏工作目录中，不散落到最终输出根目录；取消或失败只在该目录保留未完成状态。
+   用户授权保留的诊断报告例外：每请求独立写入 `Diagnostics/Render-*.json`，该目录内允许原子替换期间的短暂 `.tmp`，随后立即清理；报告不随工作目录清理，以便下次启动后排查。主目录不可写时尝试系统临时目录的 `RenderAllCameras-Diagnostics/`。
 6. 旧的 `RenderOutput/` 不自动迁移或删除。
 
 ## 7. 文件命名
@@ -419,7 +420,7 @@ IDLE
 Beauty 原场景需要保存并恢复：
 
 - 原活动摄影机；
-- 原 World 与所有被任务触及的 Light `hide_render`；
+- 原 World 与已登记灯光 Collection 根的 `hide_render` / LayerCollection `exclude`；
 - 原当前帧；
 - 原渲染输出路径及相关图像设置中确实被临时改变的字段；
 - 原界面锁定状态；
@@ -656,7 +657,7 @@ Extension ZIP 必须在 Blender 4.2+ 完成官方验证与安装态测试；同�
 13. 插件不主动保存 `.blend`，不永久修改原对象材质、颜色或 Pass Index。
 14. 只有本轮成功生成的同名输出会覆盖旧文件，其他已有文件不受影响。
 15. Extension ZIP 在 4.2+ 通过官方验证并安装运行，Legacy ZIP 在 4.0.2–4.1 安装运行。
-16. 有配对的 Camera 只使用指定 Light Collection/World，未配对 Camera 使用 Scene 默认，任务结束后原环境完整恢复。
+16. 有配对的 Camera 切换已登记 Light Collection 根与 World，保留对象、子集合、父级与未登记集合的手动显隐；未配对 Camera 使用 Scene 默认，任务结束后原环境完整恢复。
 
 ## 21. 开发阶段
 

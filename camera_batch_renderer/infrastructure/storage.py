@@ -3,10 +3,34 @@ from __future__ import annotations
 import ctypes
 import os
 import shutil
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
 WORK_DIRECTORY_NAME = ".render-all-cameras-work"
+
+
+def _remove_work_directory(directory: Path) -> None:
+    """Retry short Windows sharing locks, never hide a permanent cleanup error."""
+    delays = (0.0, 0.05, 0.1, 0.2)
+    for attempt, delay in enumerate(delays):
+        if delay:
+            time.sleep(delay)
+        try:
+            shutil.rmtree(directory)
+            return
+        except FileNotFoundError:
+            if not directory.exists():
+                return
+            raise
+        except OSError as exc:
+            if getattr(exc, "winerror", None) not in {5, 32, 33, 145}:
+                raise
+            if attempt == len(delays) - 1:
+                raise OSError(
+                    "Cannot clean temporary render directory; "
+                    f"a file may still be in use: {directory}"
+                ) from exc
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,7 +55,7 @@ def _hide_on_windows(directory: Path) -> None:
 def prepare_output_directory(directory: Path) -> OutputAllocation:
     directory.mkdir(parents=True, exist_ok=True)
     working_directory = directory / WORK_DIRECTORY_NAME
-    shutil.rmtree(working_directory, ignore_errors=True)
+    _remove_work_directory(working_directory)
     working_directory.mkdir()
     _hide_on_windows(working_directory)
     staging_directory = working_directory / "staging"
@@ -54,4 +78,4 @@ def mark_incomplete(allocation: OutputAllocation) -> Path:
 
 
 def mark_complete(allocation: OutputAllocation) -> None:
-    shutil.rmtree(allocation.working_directory, ignore_errors=True)
+    _remove_work_directory(allocation.working_directory)

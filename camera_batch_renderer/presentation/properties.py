@@ -61,7 +61,9 @@ class RAC_EnvironmentPair(bpy.types.PropertyGroup):
     light_collection: bpy.props.PointerProperty(
         name="Light Collection",
         type=bpy.types.Collection,
-        description="Only lights in this collection and its child collections will render",
+        description=(
+            "Switch this preset collection; keep manual visibility in unregistered collections"
+        ),
         update=_pair_updated,
     )
     world: bpy.props.PointerProperty(
@@ -78,6 +80,8 @@ class RAC_Settings(bpy.types.PropertyGroup):
     include_object_id: bpy.props.BoolProperty(name="Render Object ID", default=False)
     include_material_id: bpy.props.BoolProperty(name="Render Material ID", default=False)
     status_text: bpy.props.StringProperty(name="Status", default="Ready")
+    diagnostic_path: bpy.props.StringProperty(default="", options={"SKIP_SAVE"})
+    diagnostic_error: bpy.props.StringProperty(default="", options={"SKIP_SAVE"})
     progress: bpy.props.FloatProperty(name="Progress", default=0.0, min=0.0, max=1.0)
     environment_pairs: bpy.props.CollectionProperty(type=RAC_EnvironmentPair)
     environment_pair_index: bpy.props.IntProperty(

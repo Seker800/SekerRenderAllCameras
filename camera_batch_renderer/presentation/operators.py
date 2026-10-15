@@ -1,31 +1,40 @@
 from __future__ import annotations
 
+import traceback
+
 import bpy
+from bpy.app.handlers import persistent
 
 from ..application import RENDER_CANCELLED, RENDER_COMPLETE
+from ..blender.diagnostics import begin_diagnostics
 from ..blender.runtime import create_session
 from . import runtime_state
 from .host_policy import HOST_DRIVER_CLASS
 
 
+@persistent
 def _render_complete(*_args: object) -> None:
-    if runtime_state.active_session is not None:
+    session = runtime_state.active_session
+    if session is not None and _args and _args[0] == session.adapter.render_scene:
         runtime_state.render_event = RENDER_COMPLETE
 
 
+@persistent
 def _render_cancel(*_args: object) -> None:
-    if runtime_state.active_session is not None:
+    session = runtime_state.active_session
+    if session is not None and _args and _args[0] == session.adapter.render_scene:
         runtime_state.render_event = RENDER_CANCELLED
 
 
+@persistent
 def _load_pre(*_args: object) -> None:
     session = runtime_state.active_session
-    if session is not None:
+    driver = runtime_state.active_operator
+    if driver is not None:
+        driver._finish(cancelled=True)
+    elif session is not None:
         session.cancel()
         session.finish()
-    driver = runtime_state.active_operator
-    if driver is not None and hasattr(driver, "_remove_timer"):
-        driver._remove_timer(bpy.context)
     runtime_state.clear()
 
 
@@ -91,10 +100,28 @@ class RAC_OT_render_all(bpy.types.Operator):
 
     @classmethod
     def poll(cls, _context: bpy.types.Context) -> bool:
-        return runtime_state.active_session is None and not bpy.app.is_job_running("RENDER")
+        if runtime_state.active_session is not None:
+            cls.poll_message_set("A batch is already running")
+            return False
+        if bpy.app.is_job_running("RENDER"):
+            cls.poll_message_set("Wait for the current Blender render to finish")
+            return False
+        return True
 
     def execute(self, context: bpy.types.Context) -> set[str]:
         settings = context.scene.rac_settings
+        session = None
+        driver = None
+        diagnostics = None
+        try:
+            diagnostics = begin_diagnostics(context.scene, {
+                "Beauty": settings.include_beauty,
+                "Alpha": settings.include_alpha,
+                "ObjectID": settings.include_object_id,
+                "MaterialID": settings.include_material_id,
+            })
+        except Exception as exc:
+            settings.diagnostic_error = f"Cannot collect diagnostics: {exc}"
         try:
             session = create_session(
                 context.scene,
@@ -102,6 +129,7 @@ class RAC_OT_render_all(bpy.types.Operator):
                 include_alpha=settings.include_alpha,
                 include_object_id=settings.include_object_id,
                 include_material_id=settings.include_material_id,
+                diagnostics=diagnostics,
                 environment_pairs=tuple(
                     (item.camera, item.light_collection, item.world)
                     for item in settings.environment_pairs
@@ -111,12 +139,23 @@ class RAC_OT_render_all(bpy.types.Operator):
             runtime_state.active_session = session
             runtime_state.active_operator = driver
             session.start()
+            settings.status_text = "Preparing render"
+            settings.progress = 0.0
+            return driver.start(context)
         except Exception as exc:
-            runtime_state.clear()
-            self.report({"ERROR"}, str(exc))
+            message = str(exc)
+            if diagnostics is not None:
+                diagnostics.record("start_failed", error=message, traceback=traceback.format_exc())
+            try:
+                if driver is not None:
+                    driver._remove_timer(context)
+                if session is not None:
+                    message = session.abort_start(message)
+            finally:
+                runtime_state.clear()
+            settings.status_text = f"Cannot start: {message}"
+            self.report({"ERROR"}, message)
             return {"CANCELLED"}
-        settings.status_text = "Rendering"
-        return driver.start(context)
 
     def modal(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
         driver = runtime_state.active_operator
@@ -143,5 +182,5 @@ class RAC_OT_cancel(bpy.types.Operator):
         if session is None:
             return {"CANCELLED"}
         session.coordinator.request_cancel()
-        context.scene.rac_settings.status_text = "Stopping after current image"
+        session.scene.rac_settings.status_text = "Stopping after current image"
         return {"FINISHED"}

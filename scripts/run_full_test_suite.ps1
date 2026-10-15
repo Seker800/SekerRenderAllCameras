@@ -1,5 +1,6 @@
 param(
     [string[]]$BlenderPaths = @(),
+    [string[]]$PackageBlenderPaths = @(),
     [switch]$SkipGui,
     [switch]$Release
 )
@@ -14,8 +15,28 @@ New-Item -ItemType Directory -Force -Path $reportRoot | Out-Null
 if ($BlenderPaths.Count -eq 0) {
     $BlenderPaths = @((Get-Command blender -ErrorAction Stop).Source)
 }
+if ($PackageBlenderPaths.Count -eq 0) {
+    $PackageBlenderPaths = $BlenderPaths
+}
 $python = (Get-Command python -ErrorAction Stop).Source
 $results = [System.Collections.Generic.List[object]]::new()
+function Get-ProtectedProfileHashes {
+    $hashes = [ordered]@{}
+    $root = Join-Path $env:APPDATA "Blender Foundation\Blender"
+    if (Test-Path -LiteralPath $root) {
+        foreach ($version in Get-ChildItem -LiteralPath $root -Directory | Where-Object Name -Match '^\d+\.\d+$') {
+            foreach ($name in @('userpref.blend', 'startup.blend')) {
+                $path = Join-Path $version.FullName "config\$name"
+                if (Test-Path -LiteralPath $path -PathType Leaf) {
+                    $hashes[$path] = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash
+                }
+            }
+        }
+    }
+    return $hashes
+}
+$protectedProfilesBefore = Get-ProtectedProfileHashes
+$protectedProfilesBefore | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $reportRoot 'protected-profiles-before.json') -Encoding utf8
 $manifestText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "camera_batch_renderer\blender_manifest.toml")
 if ($manifestText -notmatch '(?m)^version = "([^"]+)"$') {
     throw "Cannot read package version from blender_manifest.toml"
@@ -230,9 +251,18 @@ foreach ($row in $blenderRows) {
         Invoke-TestStep "blender-$label-environment" $resolvedBlender @(
             "--background", "--factory-startup", "--python", (Join-Path $repoRoot "scripts\run_environment_pair_acceptance.py")
         ) -SuccessPattern 'ENVIRONMENT_PAIR_ACCEPTANCE_OK' | Out-Null
+        Invoke-TestStep "blender-$label-visibility" $resolvedBlender @(
+            "--background", "--factory-startup", "--python", (Join-Path $repoRoot "scripts\run_collection_visibility_tests.py")
+        ) -SuccessPattern 'COLLECTION_VISIBILITY_TESTS_OK' | Out-Null
         Invoke-TestStep "blender-$label-material" $resolvedBlender @(
             "--background", "--factory-startup", "--python", (Join-Path $repoRoot "scripts\run_material_id_acceptance.py")
         ) -SuccessPattern 'MATERIAL_ID_ACCEPTANCE_OK' | Out-Null
+        Invoke-TestStep "blender-$label-pixels" $python @(
+            (Join-Path $repoRoot "scripts\run_exit_probe_matrix.py"),
+            "--blender", "$label=$resolvedBlender", "--probe", "probe_pixel_export.py",
+            "--modes", "pixels", "--repeat", "1", "--background", "--require-success",
+            "--output", (Join-Path $reportRoot "pixel-probe-$label")
+        ) -TimeoutSeconds 90 -SuccessPattern 'EXIT_PROBE_MATRIX_OK' | Out-Null
         Invoke-TestStep "blender-$label-stress" $resolvedBlender @(
             "--background", "--factory-startup", "--python", (Join-Path $repoRoot "scripts\run_stress_smoke.py")
         ) -TimeoutSeconds 300 -SuccessPattern 'STRESS_SMOKE_OK' | Out-Null
@@ -260,16 +290,53 @@ foreach ($row in $blenderRows) {
             }
         }
         if (-not $SkipGui) {
+            Invoke-TestStep "blender-$label-diagnostics" $python @(
+                (Join-Path $repoRoot "scripts\run_exit_probe_matrix.py"),
+                "--blender", "$label=$resolvedBlender", "--probe", "probe_render_diagnostics.py",
+                "--modes", "startup", "render_failure", "fallback", "unwritable",
+                "--repeat", "1", "--timeout", "180", "--require-success",
+                "--output", (Join-Path $reportRoot "diagnostics-$label")
+            ) -TimeoutSeconds 750 -SuccessPattern 'EXIT_PROBE_MATRIX_OK' | Out-Null
+            Invoke-TestStep "blender-$label-first-start" $python @(
+                (Join-Path $repoRoot "scripts\run_exit_probe_matrix.py"),
+                "--blender", "$label=$resolvedBlender", "--probe", "probe_first_start.py",
+                "--modes", "UI_NONE", "PROPERTIES_WINDOW", "FAIL_START_NONE",
+                "--repeat", "1", "--require-success",
+                "--output", (Join-Path $reportRoot "first-start-$label")
+            ) -TimeoutSeconds 180 -SuccessPattern 'EXIT_PROBE_MATRIX_OK' | Out-Null
+            Invoke-TestStep "blender-$label-active-shutdown" $python @(
+                (Join-Path $repoRoot "scripts\run_exit_probe_matrix.py"),
+                "--blender", "$label=$resolvedBlender", "--probe", "probe_active_shutdown.py",
+                "--modes", "shutdown", "--repeat", "1", "--require-success",
+                "--output", (Join-Path $reportRoot "active-shutdown-$label")
+            ) -TimeoutSeconds 90 -SuccessPattern 'EXIT_PROBE_MATRIX_OK' | Out-Null
             Invoke-TestStep "blender-$label-gui-host-control" $resolvedBlender @(
                 "--factory-startup", "--python", (Join-Path $repoRoot "scripts\run_gui_host_control.py")
             ) -TimeoutSeconds 60 -SuccessPattern 'GUI_HOST_CONTROL_OK' | Out-Null
             Invoke-TestStep "blender-$label-gui" $resolvedBlender @(
                 "--factory-startup", "--python", (Join-Path $repoRoot "scripts\run_gui_render_tests.py")
             ) -TimeoutSeconds 60 -SuccessPattern 'GUI_RENDER_TESTS_OK' | Out-Null
+            $previousEngine = $env:RAC_TEST_ENGINE
+            $previousSamples = $env:RAC_TEST_SAMPLES
+            try {
+                $env:RAC_TEST_ENGINE = "CYCLES"
+                $env:RAC_TEST_SAMPLES = "1024"
+                Invoke-TestStep "blender-$label-gui-cycles" $resolvedBlender @(
+                    "--factory-startup", "--python", (Join-Path $repoRoot "scripts\run_gui_render_tests.py")
+                ) -TimeoutSeconds 300 -SuccessPattern 'GUI_RENDER_TESTS_OK' | Out-Null
+            }
+            finally {
+                $env:RAC_TEST_ENGINE = $previousEngine
+                $env:RAC_TEST_SAMPLES = $previousSamples
+            }
         }
         else {
             Add-NotRun "blender-$label-gui-host-control" "GUI checks were explicitly skipped"
             Add-NotRun "blender-$label-gui" "GUI checks were explicitly skipped"
+            Add-NotRun "blender-$label-gui-cycles" "GUI checks were explicitly skipped"
+            Add-NotRun "blender-$label-first-start" "GUI checks were explicitly skipped"
+            Add-NotRun "blender-$label-diagnostics" "GUI checks were explicitly skipped"
+            Add-NotRun "blender-$label-active-shutdown" "GUI checks were explicitly skipped"
         }
     }
     finally {
@@ -282,7 +349,7 @@ foreach ($row in $blenderRows) {
 }
 else {
     foreach ($row in $blenderRows) {
-        foreach ($suffix in @("core", "edge", "environment", "material", "stress", "version-rejection", "gui-host-control", "gui")) {
+        foreach ($suffix in @("core", "edge", "environment", "visibility", "material", "pixels", "stress", "version-rejection", "first-start", "active-shutdown", "diagnostics", "gui-host-control", "gui", "gui-cycles")) {
             Add-NotRun "blender-$($row.label)-$suffix" "Target package staging failed"
         }
     }
@@ -291,7 +358,7 @@ else {
 $buildArguments = @(
     "-ExecutionPolicy", "Bypass",
     "-File", (Join-Path $repoRoot "scripts\build_extension.ps1"),
-    "-BlenderPaths", (($blenderRows | ForEach-Object { $_.path }) -join '|'),
+    "-BlenderPaths", ($PackageBlenderPaths -join '|'),
     "-Python", $python
 )
 $buildPassed = $false
@@ -441,6 +508,18 @@ else {
     Add-NotRun "cross-version-contracts" "Installed-package contracts were not produced"
 }
 
+$protectedProfilesAfter = Get-ProtectedProfileHashes
+$profileLog = Join-Path $reportRoot 'protected-profiles.json'
+$profilesUnchanged = ($protectedProfilesBefore | ConvertTo-Json -Compress) -eq ($protectedProfilesAfter | ConvertTo-Json -Compress)
+@{ before = $protectedProfilesBefore; after = $protectedProfilesAfter; unchanged = $profilesUnchanged } |
+    ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $profileLog -Encoding utf8
+$results.Add([pscustomobject]@{
+    name = 'protected-user-profiles'
+    status = if ($profilesUnchanged) { 'passed' } else { 'failed' }
+    exit_code = if ($profilesUnchanged) { 0 } else { 1 }
+    duration_seconds = 0
+    log = $profileLog
+})
 $failed = @($results | Where-Object status -eq "failed")
 $notRun = @($results | Where-Object status -eq "not_run")
 $packageHashes = @()
@@ -460,6 +539,7 @@ $summary = [ordered]@{
     worktree_clean = $worktreeClean
     report_directory = $reportRoot
     blender_versions = @($blenderRows | ForEach-Object label)
+    package_blender_paths = @($PackageBlenderPaths)
     passed = @($results | Where-Object status -eq "passed").Count
     failed = $failed.Count
     not_run = $notRun.Count

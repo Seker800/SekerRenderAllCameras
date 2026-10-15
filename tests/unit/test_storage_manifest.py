@@ -2,8 +2,10 @@ import ctypes
 import json
 import os
 import tempfile
+import threading
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from camera_batch_renderer.infrastructure.manifest import AtomicJsonWriter
 from camera_batch_renderer.infrastructure.storage import (
@@ -15,6 +17,62 @@ from camera_batch_renderer.infrastructure.storage import (
 
 
 class StorageTests(unittest.TestCase):
+    def test_persistent_sharing_lock_reports_failure_without_deleting_old_output(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            allocation = prepare_output_directory(root)
+            final = root / "previous.png"
+            final.write_bytes(b"keep")
+            locked = OSError("sharing violation")
+            locked.winerror = 32
+            with (
+                patch(
+                    "camera_batch_renderer.infrastructure.storage.shutil.rmtree", side_effect=locked
+                ) as remove,
+                patch("camera_batch_renderer.infrastructure.storage.time.sleep"),
+            ):
+                with self.assertRaisesRegex(OSError, "file may still be in use"):
+                    prepare_output_directory(root)
+                self.assertEqual(remove.call_count, 4)
+                with self.assertRaisesRegex(OSError, "file may still be in use"):
+                    mark_complete(allocation)
+            self.assertEqual(final.read_bytes(), b"keep")
+
+    @unittest.skipUnless(os.name == "nt", "Windows file sharing regression")
+    def test_start_recovers_a_short_file_lock_without_another_click(self):
+        from ctypes import wintypes
+
+        kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel.CreateFileW.argtypes = [
+            wintypes.LPCWSTR,
+            wintypes.DWORD,
+            wintypes.DWORD,
+            wintypes.LPVOID,
+            wintypes.DWORD,
+            wintypes.DWORD,
+            wintypes.HANDLE,
+        ]
+        kernel.CreateFileW.restype = wintypes.HANDLE
+        kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            allocation = prepare_output_directory(root)
+            final = root / "previous.png"
+            final.write_bytes(b"keep previous output")
+            held = allocation.staging_directory / "held.tmp"
+            held.write_bytes(b"previous temporary image")
+            handle = kernel.CreateFileW(str(held), 0x80000000, 1, None, 3, 128, None)
+            self.assertNotEqual(handle, wintypes.HANDLE(-1).value)
+            release = threading.Timer(0.15, kernel.CloseHandle, args=(handle,))
+            release.start()
+            try:
+                replacement = prepare_output_directory(root)
+                self.assertTrue(replacement.marker.is_file())
+                self.assertFalse(held.exists())
+                self.assertEqual(final.read_bytes(), b"keep previous output")
+            finally:
+                release.join()
+
     def test_fixed_output_directory_preserves_existing_files_and_updates_markers(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "SekerRenderAllCameras"
@@ -33,9 +91,7 @@ class StorageTests(unittest.TestCase):
                 {"old.png", WORK_DIRECTORY_NAME},
             )
             if os.name == "nt":
-                attributes = ctypes.windll.kernel32.GetFileAttributesW(
-                    str(first.working_directory)
-                )
+                attributes = ctypes.windll.kernel32.GetFileAttributesW(str(first.working_directory))
                 self.assertNotEqual(attributes, -1)
                 self.assertTrue(attributes & 0x2)
             incomplete = mark_incomplete(first)

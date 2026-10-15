@@ -38,18 +38,41 @@ def _linear_to_byte(value: float) -> int:
 def read_png_colors(path: Path) -> set[tuple[int, int, int]]:
     image = bpy.data.images.load(str(path), check_existing=False)
     try:
-        pixels = list(image.pixels)
-        return {
-            tuple(_linear_to_byte(pixels[index + channel]) for channel in range(3))
-            for index in range(0, len(pixels), 4)
-        }
+        pixels = _read_rgba_pixels(image).reshape((-1, 4))
+        packed_colors: set[int] = set()
+        for start in range(0, len(pixels), 65536):
+            # Use double precision to retain the scalar transfer/rounding rule,
+            # but bound temporary buffers independently of output resolution.
+            rgb = pixels[start : start + 65536, :3].astype(np.float64)
+            if not np.isfinite(rgb).all():
+                raise ValueError("ID image contains non-finite color values")
+            np.maximum(rgb, 0.0, out=rgb)
+            srgb = np.where(
+                rgb <= 0.0031308,
+                rgb * 12.92,
+                1.055 * np.power(rgb, 1.0 / 2.4) - 0.055,
+            )
+            np.clip(srgb, 0.0, 1.0, out=srgb)
+            srgb *= 255.0
+            np.rint(srgb, out=srgb)
+            encoded = srgb.astype(np.uint32)
+            packed = (encoded[:, 0] << 16) | (encoded[:, 1] << 8) | encoded[:, 2]
+            packed_colors.update(int(value) for value in np.unique(packed))
+        return {(value >> 16, (value >> 8) & 255, value & 255) for value in packed_colors}
     finally:
         bpy.data.images.remove(image)
 
 
+def _read_rgba_pixels(source: bpy.types.Image) -> np.ndarray:
+    width, height = source.size[:]
+    pixels = np.empty(width * height * 4, dtype=np.float32)
+    source.pixels.foreach_get(pixels)
+    return pixels.reshape((height, width, 4))
+
+
 def save_render_alpha(output_path: Path, source: bpy.types.Image) -> None:
     width, height = source.size[:]
-    pixels = np.asarray(source.pixels[:], dtype=np.float32).reshape((height, width, 4))
+    pixels = _read_rgba_pixels(source)
     alpha = np.rint(np.clip(pixels[:, :, 3], 0.0, 1.0) * 255.0).astype(np.uint8)
     # Blender exposes image rows bottom-to-top; image files use top-to-bottom scanlines.
     alpha = np.ascontiguousarray(np.flipud(alpha)[:, :, np.newaxis])
@@ -127,12 +150,12 @@ def _copy_camera(
     data_blocks: list[bpy.types.ID],
 ) -> None:
     camera_data = camera.data.copy()
+    data_blocks.append(camera_data)
     camera_copy = bpy.data.objects.new(f"RAC_{camera.name}", camera_data)
+    objects.append(camera_copy)
     camera_copy.matrix_world = camera.matrix_world.copy()
     scene.collection.objects.link(camera_copy)
     scene.camera = camera_copy
-    objects.append(camera_copy)
-    data_blocks.append(camera_data)
 
 
 def _object_key(obj: bpy.types.Object) -> str:
@@ -183,14 +206,19 @@ def _cleanup_id_scene(
 class AlphaScene:
     def __init__(self, source: bpy.types.Scene, camera: bpy.types.Object, output_path: Path):
         self.scene = source.copy()
-        self.scene.name = f"RAC_Alpha_{uuid.uuid4().hex}"
-        self.scene.camera = camera
-        self.scene.render.film_transparent = True
-        self.scene.render.filepath = str(output_path)
-        self.scene.render.image_settings.file_format = "PNG"
-        self.scene.render.image_settings.color_mode = "RGBA"
-        self.scene.render.image_settings.color_depth = "8"
-        set_scene_compositing(self.scene, enabled=False)
+        try:
+            self.scene.name = f"RAC_Alpha_{uuid.uuid4().hex}"
+            self.scene.camera = camera
+            self.scene.render.film_transparent = True
+            self.scene.render.filepath = str(output_path)
+            self.scene.render.image_settings.file_format = "PNG"
+            self.scene.render.image_settings.color_mode = "RGBA"
+            self.scene.render.image_settings.color_depth = "8"
+            self.scene.render.use_sequencer = False
+            set_scene_compositing(self.scene, enabled=False)
+        except Exception:
+            self.cleanup()
+            raise
 
     def cleanup(self) -> None:
         if self.scene.name in bpy.data.scenes:
@@ -209,7 +237,11 @@ class ObjectIdScene:
         self._data: list[bpy.types.ID] = []
         self.skipped: list[dict[str, str]] = []
         self.colors: tuple[IdColor, ...] = ()
-        self._configure(source, camera, output_path)
+        try:
+            self._configure(source, camera, output_path)
+        except Exception:
+            self.cleanup()
+            raise
 
     @staticmethod
     def object_key(obj: bpy.types.Object) -> str:
@@ -219,9 +251,10 @@ class ObjectIdScene:
         self, source: bpy.types.Scene, camera: bpy.types.Object, output_path: Path
     ) -> None:
         _configure_id_render(self.scene, source, output_path, color_type="OBJECT")
-        _copy_camera(self.scene, camera, self._objects, self._data)
-
-        depsgraph = bpy.context.evaluated_depsgraph_get()
+        with bpy.context.temp_override(scene=source, view_layer=source.view_layers[0]):
+            source.view_layers[0].update()
+            depsgraph = bpy.context.evaluated_depsgraph_get()
+            _copy_camera(self.scene, camera.evaluated_get(depsgraph), self._objects, self._data)
         candidates = _evaluated_candidates(depsgraph, self.skipped)
         keys = [key for _evaluated, _matrix, key in candidates]
         self.colors = allocate_colors(keys)
@@ -229,13 +262,13 @@ class ObjectIdScene:
         for evaluated, matrix_world, key in candidates:
             try:
                 mesh = bpy.data.meshes.new_from_object(evaluated, depsgraph=depsgraph)
+                self._data.append(mesh)
                 duplicate = bpy.data.objects.new(f"RAC_{evaluated.name}", mesh)
+                self._objects.append(duplicate)
                 duplicate.matrix_world = matrix_world
                 rgb = color_by_key[key]
                 duplicate.color = tuple(_object_color_for_output(value) for value in rgb) + (1.0,)
                 self.scene.collection.objects.link(duplicate)
-                self._objects.append(duplicate)
-                self._data.append(mesh)
             except Exception as exc:
                 self.skipped.append({"key": key, "reason": str(exc)})
 
@@ -256,7 +289,11 @@ class MaterialIdScene:
         self.skipped: list[dict[str, str]] = []
         self.colors: tuple[IdColor, ...] = ()
         self.material_names: dict[str, str] = {}
-        self._configure(source, camera, output_path)
+        try:
+            self._configure(source, camera, output_path)
+        except Exception:
+            self.cleanup()
+            raise
 
     @staticmethod
     def material_key(material: bpy.types.Material | None) -> str:
@@ -273,8 +310,10 @@ class MaterialIdScene:
         self, source: bpy.types.Scene, camera: bpy.types.Object, output_path: Path
     ) -> None:
         _configure_id_render(self.scene, source, output_path, color_type="MATERIAL")
-        _copy_camera(self.scene, camera, self._objects, self._data)
-        depsgraph = bpy.context.evaluated_depsgraph_get()
+        with bpy.context.temp_override(scene=source, view_layer=source.view_layers[0]):
+            source.view_layers[0].update()
+            depsgraph = bpy.context.evaluated_depsgraph_get()
+            _copy_camera(self.scene, camera.evaluated_get(depsgraph), self._objects, self._data)
         duplicates: list[tuple[bpy.types.Mesh, tuple[str, ...], tuple[int, ...]]] = []
         for evaluated, matrix_world, object_key in _evaluated_candidates(depsgraph, self.skipped):
             try:
@@ -299,11 +338,11 @@ class MaterialIdScene:
         material_by_key: dict[str, bpy.types.Material] = {}
         for color in self.colors:
             material = bpy.data.materials.new(f"RAC_MaterialID_{len(material_by_key):04d}")
+            self._data.append(material)
             material.diffuse_color = tuple(
                 _object_color_for_output(value) for value in color.rgb
             ) + (1.0,)
             material_by_key[color.key] = material
-            self._data.append(material)
 
         for mesh, material_keys, material_indices in duplicates:
             mesh.materials.clear()

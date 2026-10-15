@@ -4,9 +4,17 @@ import argparse
 import hashlib
 import json
 import re
+import tempfile
 import urllib.request
 import zipfile
 from pathlib import Path
+
+try:
+    from scripts.build_target_packages import included_files
+    from scripts.prepare_target_source import prepare
+except ModuleNotFoundError:  # Direct execution adds scripts/, not the repository, to sys.path.
+    from build_target_packages import included_files
+    from prepare_target_source import prepare
 
 PACKAGE_NAME = "camera_batch_renderer"
 GITHUB_REPOSITORY = "Seker800/SekerRenderAllCameras"
@@ -36,7 +44,13 @@ def read_project_version(root: Path) -> str:
     if match is None:
         raise ValueError("Cannot read VERSION from camera_batch_renderer/version.py")
     parts = tuple(int(part.strip()) for part in match.group(1).split(",") if part.strip())
-    return ".".join(str(part) for part in parts)
+    version = ".".join(str(part) for part in parts)
+    for relative in ("camera_batch_renderer/blender_manifest.toml", "pyproject.toml"):
+        content = (root / relative).read_text(encoding="utf-8")
+        found = re.search(r'^version = "([^"]+)"$', content, re.MULTILINE)
+        if found is None or found.group(1) != version:
+            raise ValueError(f"Source version differs from version.py: {relative}")
+    return version
 
 
 def archive_payload(path: Path, *, legacy: bool) -> dict[str, bytes]:
@@ -51,6 +65,8 @@ def archive_payload(path: Path, *, legacy: bool) -> dict[str, bytes]:
                 if not name.startswith(prefix):
                     raise ValueError(f"Legacy archive has an invalid root entry: {name}")
                 normalized = name[len(prefix) :]
+            if normalized in payload:
+                raise ValueError(f"Duplicate package entry: {normalized}")
             payload[normalized] = archive.read(name)
     return payload
 
@@ -125,6 +141,25 @@ def verify_target_packages(root: Path, version: str) -> list[Path]:
         if not path.is_file():
             raise FileNotFoundError(f"Required target package is missing: {path}")
         payload = archive_payload(path, legacy=target["package_type"] == "legacy")
+        with tempfile.TemporaryDirectory(prefix="rac-release-gate-") as temporary:
+            staged = Path(temporary) / PACKAGE_NAME
+            prepare(root / PACKAGE_NAME, staged, target)
+            expected = {
+                item.relative_to(staged).as_posix(): item.read_bytes()
+                for item in included_files(staged)
+                if target["package_type"] == "extension"
+                or item.name != "blender_manifest.toml"
+            }
+        if payload != expected:
+            missing = sorted(set(expected) - set(payload))
+            extra = sorted(set(payload) - set(expected))
+            changed = sorted(
+                name for name in set(payload) & set(expected) if payload[name] != expected[name]
+            )
+            raise ValueError(
+                f"Package differs from current source for {target['id']}: "
+                f"missing={missing}, extra={extra}, changed={changed}"
+            )
         policy = payload.pop("presentation/host_policy.py", None)
         entry = payload.pop("__init__.py", None)
         manifest = payload.pop("blender_manifest.toml", None)
@@ -204,6 +239,8 @@ def verify_release_surfaces(root: Path, version: str) -> None:
         },
         "README current source": f"Current_source-{version}",
         "README source statement": f"currently **{version}**",
+        "README release page": f"/releases/tag/v{version}",
+        "README screenshot version": f"{contract['display_name']} {version} plugin panel",
         "Extension manifest version": f'version = "{version}"',
         "project version": f'version = "{version}"',
         "changelog heading": f"## {version}",
@@ -220,6 +257,8 @@ def verify_release_surfaces(root: Path, version: str) -> None:
         },
         "README current source": readme,
         "README source statement": readme,
+        "README release page": readme,
+        "README screenshot version": readme,
         "Extension manifest version": manifest,
         "project version": project,
         "changelog heading": changelog,
@@ -237,6 +276,9 @@ def verify_release_surfaces(root: Path, version: str) -> None:
     )
     if actual_links != set(release_urls(root, version)):
         raise ValueError("README download links differ from the five release artifacts")
+    for target, _path in target_artifact_paths(root, version):
+        if target["tested_version"] not in readme:
+            raise ValueError(f"README omits tested Blender {target['tested_version']}")
 
 
 def verify_online_release(root: Path, version: str) -> None:
@@ -253,11 +295,27 @@ def verify_online_release(root: Path, version: str) -> None:
     actual_names = {asset["name"] for asset in latest.get("assets", [])}
     if (
         latest.get("tag_name") != f"v{version}"
+        or version not in (latest.get("name") or "")
         or latest.get("draft")
         or latest.get("prerelease")
         or actual_names != expected_names
     ):
         raise ValueError("Latest GitHub Release tag or assets differ from this tested version")
+    body = latest.get("body") or ""
+    required_notes = [version]
+    for target, path in artifacts:
+        required_notes.extend(
+            (path.name, target["tested_version"], hashlib.sha256(path.read_bytes()).hexdigest())
+        )
+    if any(item.lower() not in body.lower() for item in required_notes):
+        raise ValueError("Latest GitHub Release notes omit a version, target, asset, or SHA-256")
+    readme_request = urllib.request.Request(
+        f"https://raw.githubusercontent.com/{GITHUB_REPOSITORY}/main/README.md",
+        headers={"User-Agent": PACKAGE_NAME},
+    )
+    with urllib.request.urlopen(readme_request, timeout=30) as response:
+        if response.status != 200 or response.read() != (root / "README.md").read_bytes():
+            raise ValueError("GitHub main README differs from the verified local README")
     for url, (_target, local_path) in zip(release_urls(root, version), artifacts, strict=True):
         if not local_path.is_file():
             raise FileNotFoundError(f"Local release artifact is missing: {local_path}")
@@ -274,6 +332,8 @@ def verify_online_release(root: Path, version: str) -> None:
 
 
 def run_gate(root: Path, *, verify_online: bool = False, packages_only: bool = False) -> None:
+    if verify_online and packages_only:
+        raise ValueError("Online verification cannot skip README and release surfaces")
     root = root.resolve()
     version = read_project_version(root)
     packages = verify_target_packages(root, version)

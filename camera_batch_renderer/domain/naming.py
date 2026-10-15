@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import re
 import unicodedata
 from collections.abc import Iterable
@@ -35,7 +36,12 @@ def sanitize_component(value: str, *, fallback: str = "Unnamed", max_length: int
         value = fallback
     if value.split(".", 1)[0].upper() in _WINDOWS_RESERVED:
         value = f"_{value}"
-    return value[:max_length].rstrip(" ._") or fallback
+    if len(value) > max_length:
+        digest = hashlib.blake2s(value.encode("utf-8"), digest_size=8).hexdigest()
+        value = (
+            f"{value[:max_length - 17]}_{digest}" if max_length > 17 else digest[:max_length]
+        )
+    return value.rstrip(" ._") or fallback
 
 
 def camera_specs(cameras: Iterable[tuple[str, str]]) -> tuple[CameraSpec, ...]:
@@ -45,16 +51,21 @@ def camera_specs(cameras: Iterable[tuple[str, str]]) -> tuple[CameraSpec, ...]:
         key=lambda item: (
             natural_key(sanitize_component(item[1], fallback="Camera")),
             item[0].casefold(),
+            item[0],
         ),
     )
-    counts: dict[str, int] = {}
+    used: set[str] = set()
     result: list[CameraSpec] = []
     for key, display_name in ordered:
-        base = sanitize_component(display_name, fallback="Camera")
-        collision_key = base.casefold()
-        counts[collision_key] = counts.get(collision_key, 0) + 1
-        suffix = "" if counts[collision_key] == 1 else f"_{counts[collision_key]:02d}"
-        result.append(CameraSpec(key=key, display_name=display_name, output_name=f"{base}{suffix}"))
+        base = sanitize_component(display_name, fallback="Camera", max_length=64)
+        candidate = base
+        counter = 1
+        while candidate.casefold() in used:
+            counter += 1
+            suffix = f"_{counter:02d}"
+            candidate = f"{base[:64 - len(suffix)]}{suffix}"
+        used.add(candidate.casefold())
+        result.append(CameraSpec(key=key, display_name=display_name, output_name=candidate))
     return tuple(result)
 
 
@@ -100,6 +111,8 @@ def fit_path(directory: Path, filename: str, *, max_path: int = 240) -> str:
         return filename
     suffix = Path(filename).suffix
     stem = Path(filename).stem
-    if available <= len(suffix) + 8:
+    digest = hashlib.blake2s(filename.encode("utf-8"), digest_size=8).hexdigest()
+    if available <= len(suffix) + len(digest) + 1:
         raise ValueError("output directory leaves no safe filename budget")
-    return stem[: available - len(suffix)].rstrip(" ._") + suffix
+    prefix = stem[: available - len(suffix) - len(digest) - 1].rstrip(" ._")
+    return f"{prefix}_{digest}{suffix}"

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import bpy
 
+from ..blender.diagnostics import find_diagnostics_directory
 from ..domain.naming import OUTPUT_DIRECTORY_NAME
 from ..version import VERSION_TEXT
 from . import runtime_state
@@ -63,14 +64,17 @@ def draw_controls(layout: bpy.types.UILayout, context: bpy.types.Context) -> Non
     settings = context.scene.rac_settings
     session = runtime_state.active_session
     row = layout.row(align=True)
+    row.enabled = session is None
     row.prop(settings, "include_beauty")
     row.prop(settings, "include_alpha")
     row = layout.row(align=True)
+    row.enabled = session is None
     row.prop(settings, "include_object_id")
     row.prop(settings, "include_material_id")
     draw_environment_pairs(layout, settings, enabled=session is None)
     if session is None:
         layout.operator("render.render_all_cameras", icon="RENDER_STILL")
+        layout.label(text=settings.status_text)
     else:
         layout.progress(factor=settings.progress, text=settings.status_text)
         if session.coordinator.snapshot().cancel_requested:
@@ -78,6 +82,12 @@ def draw_controls(layout: bpy.types.UILayout, context: bpy.types.Context) -> Non
         else:
             layout.operator("render.cancel_all_cameras", icon="CANCEL")
     layout.label(text=f"Output: //{OUTPUT_DIRECTORY_NAME}/", icon="FILE_FOLDER")
+    diagnostic_directory = find_diagnostics_directory(settings.diagnostic_path)
+    if diagnostic_directory is not None:
+        button = layout.operator("wm.path_open", text="Open Diagnostics", icon="FILE_FOLDER")
+        button.filepath = str(diagnostic_directory)
+    if settings.diagnostic_error:
+        layout.label(text=settings.diagnostic_error, icon="ERROR")
     layout.label(text=f"Version {VERSION_TEXT} · Blender {TARGET_LABEL}", icon="INFO")
 
 

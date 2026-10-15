@@ -25,3 +25,24 @@ a successful run; cancellation or failure keeps only a hidden `.incomplete` diag
 the next run to replace. Temporary auxiliary scenes are removed and the active camera, frame, Film
 Transparent setting, and render filepath are restored after completion, cancellation, or a handled
 failure.
+
+GUI batches open and reuse Blender's Render Result window. Cycles and EEVEE run asynchronously;
+Workbench and ID renders use the synchronous host path for Windows GPU-context compatibility.
+Preset selection changes registered Collection roots only. Objects, manually hidden children,
+parents and unregistered Collections keep their visibility. Put switchable rigs in dedicated
+Collections and register each rig that should switch with the presets.
+
+## If rendering does not start or stops unexpectedly
+
+Click **Open Diagnostics** in the add-on panel and send the relevant `Render-*.json` files
+(or zip the folder). Reports live in `SekerRenderAllCameras/Diagnostics/` next to the `.blend`.
+If that location cannot be written, the add-on tries `RenderAllCameras-Diagnostics` inside
+the operating system's temporary directory. The panel shows an error if neither location works.
+
+Each accepted button request gets a separate report, including requests rejected during
+preflight. It records Blender/add-on versions, cached device settings, display GPU/driver,
+channels, camera, output paths, errors and the last checkpoint. While an asynchronous render is
+running, the report updates about every five seconds when Blender's UI timer can run. A frozen
+host cannot update it, and a native crash may leave only the last checkpoint, without a Python
+error. Reports are retained across retries; no files are uploaded automatically. They contain
+local file paths and camera/scene names, but no scene geometry or material contents.
