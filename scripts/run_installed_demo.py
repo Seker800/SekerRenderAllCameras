@@ -98,6 +98,23 @@ def main() -> None:
             getattr(settings, name) == option["default"], f"Initial option value is wrong: {name}"
         )
         assert_true(name in drawn.properties, f"Installed panel does not draw: {name}")
+    scope = contract_spec.get("camera_scope_option")
+    if scope is not None:
+        name = scope["property"]
+        definition = settings.bl_rna.properties.get(name)
+        assert_true(definition is not None, f"Installed scope option is missing: {name}")
+        assert_true(
+            definition.name == scope["label"], f"Installed scope option label is wrong: {name}"
+        )
+        assert_true(
+            definition.default == scope["default"],
+            f"Installed scope option default is wrong: {name}",
+        )
+        assert_true(
+            getattr(settings, name) == scope["default"],
+            f"Initial scope option value is wrong: {name}",
+        )
+        assert_true(name in drawn.properties, f"Installed panel does not draw scope: {name}")
     original_camera = scene.camera
     original_filepath = scene.render.filepath
     session = runtime.run_batch_sync(
@@ -180,7 +197,57 @@ def main() -> None:
             }
             for name in contract_spec["output_options"]
         },
+        "camera_scope_option": (
+            {
+                "label": settings.bl_rna.properties[scope["property"]].name,
+                "default": settings.bl_rna.properties[scope["property"]].default,
+                "drawn": scope["property"] in drawn.properties,
+            }
+            if scope is not None
+            else None
+        ),
     }
+    scoped_camera = scene.objects["Camera_01_Front"]
+    scoped_session = runtime.run_batch_sync(
+        scene,
+        include_all_cameras=False,
+        environment_pairs=((scoped_camera, None, None),),
+    )
+    scoped_progress = scoped_session.coordinator.snapshot()
+    assert_true(scoped_progress.status.value == "completed", "Scoped batch did not complete")
+    assert_true(len(scoped_progress.results) == 1, "Scoped batch result count is wrong")
+    assert_true(
+        scoped_progress.results[0].camera_name == "Camera_01_Front",
+        "Scoped batch rendered the wrong camera",
+    )
+    scoped_info = next(scoped_session.allocation.directory.glob("*_RenderInfo.json"))
+    scoped_payload = json.loads(scoped_info.read_text(encoding="utf-8"))
+    assert_true(scoped_payload["all_cameras"] is False, "Scoped manifest scope is wrong")
+    assert_true(scoped_payload["camera_count"] == 1, "Scoped manifest camera count is wrong")
+    fallback_session = runtime.run_batch_sync(
+        scene,
+        include_all_cameras=False,
+        environment_pairs=(),
+    )
+    fallback_progress = fallback_session.coordinator.snapshot()
+    assert_true(
+        fallback_progress.status.value == "completed",
+        "Empty-list fallback batch did not complete",
+    )
+    assert_true(
+        len(fallback_progress.results) == 2,
+        "Empty-list fallback did not render all cameras",
+    )
+    fallback_info = next(fallback_session.allocation.directory.glob("*_RenderInfo.json"))
+    fallback_payload = json.loads(fallback_info.read_text(encoding="utf-8"))
+    assert_true(
+        fallback_payload["all_cameras"] is True,
+        "Empty-list fallback manifest scope is wrong",
+    )
+    assert_true(
+        fallback_payload["camera_count"] == 2,
+        "Empty-list fallback manifest camera count is wrong",
+    )
     single_channel_results = {}
     for selected_name, option in contract_spec["output_options"].items():
         selected = {name: name == selected_name for name in contract_spec["output_options"]}

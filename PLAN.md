@@ -1,6 +1,6 @@
 # Blender 全摄影机静帧批量渲染插件开发计划
 
-> 文档状态：实施基线（Revision 6）
+> 文档状态：实施基线（Revision 9）
 >
 > 最低目标版本：Blender 4.0.2
 >
@@ -21,7 +21,7 @@
 
 ## 2. 已确定的产品决策
 
-1. 一轮任务只处理一个 Scene、一个固定帧和多台摄影机。
+1. 一轮任务只处理一个 Scene、一个固定帧和多台摄影机；默认处理当前 Scene 全部相机，也可只处理 Camera Environments 中登记的相机；列表为空时回退为全部相机。
 2. 所有结果保存到 `.blend` 文件同级的 `SekerRenderAllCameras/`，不创建数字批次目录。
 3. 文件名不使用批次 ID；同名新图成功后覆盖旧图，本次未生成的旧图保留。
 4. Beauty、Alpha、Object ID、Material ID 均可独立选择；至少选择一项，Beauty 默认开启并严格遵循用户原有渲染内容设置。
@@ -40,7 +40,7 @@
 ### 3.1 包含
 
 - 当前 Scene 的当前帧静帧渲染。
-- 当前 Scene 内全部摄影机的稳定收集和排序。
+- 当前 Scene 内全部摄影机的稳定收集和排序；可选只处理 Camera Environments 中已登记的摄影机。
 - 按用户选择逐台摄影机生成 Beauty、Alpha、Object ID 和/或 Material ID；允许任意单通道。
 - 可选 Alpha。
 - 可选精确 Object ID PNG。
@@ -75,7 +75,7 @@
 - `输出 Alpha`：默认关闭。
 - `输出 Object ID`：默认关闭。
 - `输出 Material ID`：默认关闭。
-- `输出 Material ID`：默认关闭。
+- `All Cameras`：默认开启；开启时处理当前 Scene 全部相机，关闭时只处理 Camera Environments 中已登记 Camera 的对象；关闭且列表为空时回退为全部相机。
 - `输出目录`：只读显示 `//SekerRenderAllCameras/`。
 - `摄影机数量`与`预计文件数量`。
 - `Camera Environments`：可添加/删除 Camera + Light Collection + World 配对；Light/World 均可留空以继承 Scene 默认。
@@ -96,14 +96,19 @@
 - Material ID 是按材质数据块生成的离散标签图；没有材质的表面使用 `Unassigned`。
 - Volume 暂不纳入 Object ID。
 - 未保存 `.blend` 时必须先保存。
+- 关闭 `All Cameras` 且 Camera Environments 为空时，使用场景现有环境渲染全部相机，并在面板中说明回退行为。
+- 选择 Camera Environments 配对行时只切换当前相机和 World，不显示、隐藏、启用或排除任何灯组 Collection；正式渲染仍按配对隔离已登记灯组。
 
 ## 5. 摄影机收集规则
 
-第一版收集：
+`All Cameras` 开启时收集：
 
 ```text
 scene.objects 中所有 type == 'CAMERA' 且 data 有效的对象
 ```
+
+`All Cameras` 关闭时，只收集 Camera Environments 中已指定 Camera 的对象；配对行灯组和 World
+均可留空，留空时使用场景默认环境。列表为空时回退为全部相机，并使用场景现有环境。
 
 具体规则：
 

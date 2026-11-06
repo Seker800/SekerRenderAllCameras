@@ -116,22 +116,12 @@ def switch_light_collections(
 
 def preview_environment(
     scene: bpy.types.Scene,
-    view_layer: bpy.types.ViewLayer,
     *,
     camera: bpy.types.Object | None,
-    light_collection: bpy.types.Collection | None,
     world: bpy.types.World | None,
-    other_light_collections: tuple[bpy.types.Collection, ...] = (),
 ) -> None:
+    """Preview only the camera and World; never change light Collection visibility."""
     if camera is not None:
         scene.camera = camera
-    if light_collection is not None:
-        switch_light_collections(
-            scene,
-            view_layer,
-            id_key(light_collection),
-            tuple(id_key(item) for item in other_light_collections),
-            viewport=True,
-        )
     if world is not None:
         scene.world = world

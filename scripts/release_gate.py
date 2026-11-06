@@ -35,6 +35,14 @@ def read_release_contract(root: Path) -> dict:
         "include_material_id",
     }:
         raise ValueError("Release contract must define all four output options")
+    scope = contract.get("camera_scope_option")
+    if scope is not None:
+        if set(scope) != {"property", "label", "default"}:
+            raise ValueError("Release contract camera scope option is invalid")
+        if not all(isinstance(scope[key], str) for key in ("property", "label")):
+            raise ValueError("Release contract camera scope names must be strings")
+        if not isinstance(scope["default"], bool):
+            raise ValueError("Release contract camera scope default must be boolean")
     return contract
 
 
@@ -119,18 +127,25 @@ def target_display_name(contract: dict, version: str, target: dict) -> str:
 def verify_feature_surface(payload: dict[str, bytes], contract: dict) -> None:
     properties = payload.get("presentation/properties.py", b"").decode("utf-8")
     panel = payload.get("presentation/panel.py", b"").decode("utf-8")
-    for property_name, option in contract["output_options"].items():
+    options = dict(contract["output_options"])
+    scope = contract.get("camera_scope_option")
+    if scope is not None:
+        options[scope["property"]] = {
+            "label": scope["label"],
+            "default": scope["default"],
+        }
+    for property_name, option in options.items():
         declaration = (
             rf"\b{re.escape(property_name)}\s*:\s*bpy\.props\.BoolProperty\("
             rf'\s*name="{re.escape(option["label"])}",\s*'
-            rf"default={option['default']}\s*\)"
+            rf"default={option['default']}\s*(?:,|\))"
         )
         if re.search(declaration, properties) is None:
             raise ValueError(
-                f"Package output option is missing or has the wrong default: {property_name}"
+                f"Package option is missing or has the wrong default: {property_name}"
             )
         if re.search(rf'\.prop\(settings, "{re.escape(property_name)}"\)', panel) is None:
-            raise ValueError(f"Package UI does not draw output option: {property_name}")
+            raise ValueError(f"Package UI does not draw option: {property_name}")
 
 
 def verify_target_packages(root: Path, version: str) -> list[Path]:

@@ -130,6 +130,10 @@ def main() -> None:
         settings = scene.rac_settings
         assert_true(settings.include_beauty, "Beauty must be enabled by default")
         assert_true(
+            settings.include_all_cameras,
+            "All Cameras must be enabled by default",
+        )
+        assert_true(
             bpy.ops.render.camera_environment_pair_add() == {"FINISHED"},
             "Environment pair add operator failed",
         )
@@ -152,10 +156,13 @@ def main() -> None:
         settings.environment_pairs[1].world = worlds[1]
         assert_true(scene.camera == camera_objects[1], "Active pair did not switch the camera")
         assert_true(scene.world == worlds[1], "Active pair did not switch the World")
-        assert_true(not rig_two_layer.exclude, "Preview did not reveal an excluded light rig")
         assert_true(
-            not light_collections[1].hide_render,
-            "Preview did not reveal a render-hidden light rig",
+            rig_two_layer.exclude,
+            "Preview changed the selected light rig's layer exclusion",
+        )
+        assert_true(
+            light_collections[1].hide_render,
+            "Preview changed the selected light rig's render visibility",
         )
         assert_true(not light_objects[0].hide_viewport, "Preview changed other light object flag")
         assert_true(
@@ -163,27 +170,31 @@ def main() -> None:
             "Preview changed selected light object flag",
         )
         assert_true(
-            light_collections[0].hide_render,
-            "Preview did not disable the other paired collection",
+            not light_collections[0].hide_render,
+            "Preview changed the other paired collection",
         )
         assert_true(
-            not light_objects[0].visible_get(view_layer=scene.view_layers[0]),
-            "Preview eye visibility kept the other rig visible",
+            light_objects[0].visible_get(view_layer=scene.view_layers[0]),
+            "Preview disabled the other paired light",
         )
         assert_true(
             not rig_two_layer.hide_viewport,
-            "Preview did not reveal the selected collection root",
+            "Preview changed the selected collection root's viewport flag",
         )
         settings.environment_pair_index = 0
         assert_true(scene.camera == camera_objects[0], "Pair row selection did not switch camera")
         assert_true(scene.world == worlds[0], "Pair row selection did not switch World")
         assert_true(
             not light_collections[0].hide_render,
-            "Pair row selection did not enable its light collection",
+            "Pair row selection changed its light collection",
         )
         assert_true(
-            light_collections[1].hide_render and rig_two_layer.hide_viewport,
-            "Pair row selection did not disable the previous light collection",
+            light_collections[1].hide_render,
+            "Pair row selection changed the previous light collection",
+        )
+        assert_true(
+            rig_two_layer.exclude,
+            "Pair row selection changed the previous collection root exclusion",
         )
         assert_true(
             bpy.ops.render.camera_environment_pair_remove() == {"FINISHED"},
@@ -297,6 +308,7 @@ def main() -> None:
         )
         render_info = next(session.allocation.directory.glob("*_RenderInfo.json"))
         render_payload = json.loads(render_info.read_text(encoding="utf-8"))
+        assert_true(render_payload["all_cameras"] is True, "All Cameras was not recorded")
         environments = {item["name"]: item["environment"] for item in render_payload["cameras"]}
         assert_true(
             environments["Camera 2"]
@@ -449,6 +461,83 @@ def main() -> None:
             ),
             "Material ID-only batch rendered the wrong actions",
         )
+
+        scoped = run_batch_sync(
+            scene,
+            include_beauty=True,
+            include_all_cameras=False,
+            environment_pairs=(environment_pairs[1],),
+        )
+        scoped_progress = scoped.coordinator.snapshot()
+        assert_true(
+            len(scoped_progress.results) == 1,
+            "Scoped batch did not render exactly one camera",
+        )
+        assert_true(
+            scoped_progress.results[0].camera_name == "Camera 2",
+            "Scoped batch rendered the wrong camera",
+        )
+        scoped_info = next(scoped.allocation.directory.glob("*_RenderInfo.json"))
+        scoped_payload = json.loads(scoped_info.read_text(encoding="utf-8"))
+        assert_true(scoped_payload["all_cameras"] is False, "Scoped scope was not recorded")
+        assert_true(scoped_payload["camera_count"] == 1, "Scoped camera count is wrong")
+
+        paired_without_environment = run_batch_sync(
+            scene,
+            include_beauty=True,
+            include_all_cameras=False,
+            environment_pairs=((camera_objects[0], None, None),),
+        )
+        paired_progress = paired_without_environment.coordinator.snapshot()
+        assert_true(
+            len(paired_progress.results) == 1
+            and paired_progress.results[0].camera_name == "Camera 10",
+            "A paired camera without an environment was not selected",
+        )
+        paired_info = next(
+            paired_without_environment.allocation.directory.glob("*_RenderInfo.json")
+        )
+        paired_payload = json.loads(paired_info.read_text(encoding="utf-8"))
+        assert_true(
+            paired_payload["cameras"][0]["environment"] is None,
+            "A pair without environment recorded an environment",
+        )
+
+        for empty_pairs in ((), ((None, None, None),)):
+            fallback = run_batch_sync(
+                scene,
+                include_beauty=True,
+                include_all_cameras=False,
+                environment_pairs=empty_pairs,
+            )
+            fallback_progress = fallback.coordinator.snapshot()
+            assert_true(
+                len(fallback_progress.results) == 2,
+                "An empty Camera Environments list did not fall back to all cameras",
+            )
+            assert_true(
+                [result.camera_name for result in fallback_progress.results]
+                == ["Camera 2", "Camera 10"],
+                "Empty-list fallback rendered the wrong cameras or order",
+            )
+            fallback_info = next(fallback.allocation.directory.glob("*_RenderInfo.json"))
+            fallback_payload = json.loads(fallback_info.read_text(encoding="utf-8"))
+            assert_true(
+                fallback_payload["all_cameras"] is True,
+                "Empty-list fallback did not record the effective all-camera scope",
+            )
+            assert_true(
+                fallback_payload["camera_count"] == 2,
+                "Empty-list fallback camera count is wrong",
+            )
+            assert_true(
+                all(item["environment"] is None for item in fallback_payload["cameras"]),
+                "Empty-list fallback recorded an environment pairing",
+            )
+            assert_true(
+                not (fallback.allocation.directory / WORK_DIRECTORY_NAME).exists(),
+                "Empty-list fallback left its working directory",
+            )
 
         output_directory = session.allocation.directory
         assert_true(

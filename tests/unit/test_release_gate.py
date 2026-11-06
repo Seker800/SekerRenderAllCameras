@@ -258,6 +258,30 @@ class ReleaseGateTests(unittest.TestCase):
         payload["presentation/panel.py"] = b'row.prop(settings, "include_beauty")'
         verify_feature_surface(payload, contract)
 
+    def test_feature_surface_checks_multiline_camera_scope_option(self) -> None:
+        contract = {
+            "output_options": {},
+            "camera_scope_option": {
+                "property": "include_all_cameras",
+                "label": "All Cameras",
+                "default": True,
+            },
+        }
+        payload = {
+            "presentation/properties.py": (
+                b"include_all_cameras: bpy.props.BoolProperty(\n"
+                b'    name="All Cameras",\n'
+                b"    default=True,\n"
+                b'    description=("Render every camera"),\n'
+                b")"
+            ),
+            "presentation/panel.py": b'row.prop(settings, "include_all_cameras")',
+        }
+        verify_feature_surface(payload, contract)
+        payload["presentation/panel.py"] = b""
+        with self.assertRaisesRegex(ValueError, "does not draw"):
+            verify_feature_surface(payload, contract)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -2,7 +2,7 @@ import bpy
 
 
 def _preview_pair(pair: object, context: bpy.types.Context | None) -> None:
-    if context is None or context.scene is None or context.view_layer is None:
+    if context is None or context.scene is None:
         return
     from . import runtime_state
 
@@ -14,16 +14,8 @@ def _preview_pair(pair: object, context: bpy.types.Context | None) -> None:
 
         preview_environment(
             context.scene,
-            context.view_layer,
             camera=pair.camera,
-            light_collection=pair.light_collection,
             world=pair.world,
-            other_light_collections=tuple(
-                item.light_collection
-                for item in settings.environment_pairs
-                if item.as_pointer() != pair.as_pointer()
-                and item.light_collection is not None
-            ),
         )
     except Exception as exc:
         settings.status_text = f"Environment preview failed: {exc}"
@@ -79,6 +71,14 @@ class RAC_Settings(bpy.types.PropertyGroup):
     include_alpha: bpy.props.BoolProperty(name="Render Alpha", default=False)
     include_object_id: bpy.props.BoolProperty(name="Render Object ID", default=False)
     include_material_id: bpy.props.BoolProperty(name="Render Material ID", default=False)
+    include_all_cameras: bpy.props.BoolProperty(
+        name="All Cameras",
+        default=True,
+        description=(
+            "Render every camera in the scene; disable to render only cameras added "
+            "under Camera Environments. An empty list falls back to all cameras"
+        ),
+    )
     status_text: bpy.props.StringProperty(name="Status", default="Ready")
     diagnostic_path: bpy.props.StringProperty(default="", options={"SKIP_SAVE"})
     diagnostic_error: bpy.props.StringProperty(default="", options={"SKIP_SAVE"})

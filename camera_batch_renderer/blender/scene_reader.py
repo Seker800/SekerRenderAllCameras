@@ -23,6 +23,28 @@ def camera_key(camera: bpy.types.Object) -> str:
     return id_key(camera)
 
 
+def _paired_camera_keys(
+    scene: bpy.types.Scene,
+    environment_pairs: tuple[
+        tuple[bpy.types.Object | None, bpy.types.Collection | None, bpy.types.World | None], ...
+    ],
+) -> tuple[str, ...]:
+    """Return the unique cameras registered under Camera Environments, in list order."""
+    scene_camera_keys = {
+        camera_key(obj) for obj in scene.objects if obj.type == "CAMERA"
+    }
+    selected: list[str] = []
+    for camera, _collection, _world in environment_pairs:
+        if camera is None:
+            continue
+        key = camera_key(camera)
+        if key not in scene_camera_keys:
+            raise ValueError(f'Paired camera is not in the current scene: "{camera.name}"')
+        if key not in selected:
+            selected.append(key)
+    return tuple(selected)
+
+
 def _environment_specs(
     scene: bpy.types.Scene,
     environment_pairs: tuple[
@@ -113,6 +135,7 @@ def build_render_plan(
     include_alpha: bool = False,
     include_object_id: bool = False,
     include_material_id: bool = False,
+    include_all_cameras: bool = True,
     output_directory: Path,
     environment_pairs: tuple[
         tuple[bpy.types.Object | None, bpy.types.Collection | None, bpy.types.World | None], ...
@@ -126,8 +149,19 @@ def build_render_plan(
         include_material_id=include_material_id,
     )
     environments = _environment_specs(scene, environment_pairs)
+    paired_keys = _paired_camera_keys(scene, environment_pairs)
+    use_all_cameras = include_all_cameras or not paired_keys
+    if use_all_cameras:
+        camera_objects = [obj for obj in scene.objects if obj.type == "CAMERA"]
+    else:
+        selected_keys = set(paired_keys)
+        camera_objects = [
+            obj
+            for obj in scene.objects
+            if obj.type == "CAMERA" and camera_key(obj) in selected_keys
+        ]
     cameras = camera_specs(
-        (camera_key(obj), obj.name) for obj in scene.objects if obj.type == "CAMERA"
+        (camera_key(obj), obj.name) for obj in camera_objects
     )
     cameras = tuple(
         replace(camera, environment=environments.get(camera.key))
@@ -171,6 +205,7 @@ def build_render_plan(
         frame=scene.frame_current,
         cameras=cameras,
         channels=tuple(channels),
+        all_cameras=use_all_cameras,
         settings=RenderSettings(
             engine=engine,
             engine_label=engine_label,

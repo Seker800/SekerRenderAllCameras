@@ -4,6 +4,12 @@
 
 ## 当前执行
 
+- `COMPLETED`：[`COMPLETED-预览仅切换相机与World.md`](COMPLETED-预览仅切换相机与World.md) — 预览只切换 Camera/World，不修改任何灯组集合；0.9.2 五包与安装验收。
+
+- `COMPLETED`：[`COMPLETED-空列表回退与预览灯组保留.md`](COMPLETED-空列表回退与预览灯组保留.md) — 空 Camera Environments 回退全部相机；预览不再隐藏其他灯组；0.9.1 五包与安装验收。
+
+- `COMPLETED`：[`COMPLETED-All-Cameras相机范围与0.9.0打包.md`](COMPLETED-All-Cameras相机范围与0.9.0打包.md) — 新增 All Cameras 范围开关、0.9.0 五包构建与 4.0.2 安装验收。
+
 - `COMPLETED`：[`COMPLETED-0.8.0发布.md`](COMPLETED-0.8.0发布.md) — 用户明确授权测试版后，main 与 v0.8.0 Pre-release 已发布；五包公开下载哈希通过，Latest 保留 0.7.0，88/6/0 的已知限制公开。
 
 - `COMPLETED`：[`COMPLETED-Cycles与首次启动续查.md`](COMPLETED-Cycles与首次启动续查.md) — 第 4/7 项本轮续查及诊断文件机制已交付；两重点版本 CPU 回归完成，现场 GPU 根因仍待诊断文件，第 6 项按用户要求排除。

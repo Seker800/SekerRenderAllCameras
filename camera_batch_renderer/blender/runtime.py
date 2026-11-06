@@ -188,6 +188,7 @@ class BlenderBatchSession:
             "scene": self.coordinator.plan.scene_name,
             "frame": self.coordinator.plan.frame,
             "camera_count": progress.camera_count,
+            "all_cameras": self.coordinator.plan.all_cameras,
             "cancel_requested": progress.cancel_requested,
             "error": progress.error,
             "started_at": self.started_at,
@@ -291,6 +292,7 @@ def create_session(
     include_alpha: bool = False,
     include_object_id: bool = False,
     include_material_id: bool = False,
+    include_all_cameras: bool = True,
     diagnostics: DiagnosticJournal | None = None,
     environment_pairs: tuple[
         tuple[bpy.types.Object | None, bpy.types.Collection | None, bpy.types.World | None], ...
@@ -310,6 +312,7 @@ def create_session(
         include_alpha=include_alpha,
         include_object_id=include_object_id,
         include_material_id=include_material_id,
+        include_all_cameras=include_all_cameras,
         output_directory=output_directory,
         environment_pairs=environment_pairs,
     )
@@ -364,6 +367,7 @@ def run_batch_sync(
     include_alpha: bool = False,
     include_object_id: bool = False,
     include_material_id: bool = False,
+    include_all_cameras: bool = True,
     environment_pairs: tuple[
         tuple[bpy.types.Object | None, bpy.types.Collection | None, bpy.types.World | None], ...
     ] = (),
@@ -374,6 +378,7 @@ def run_batch_sync(
         include_alpha=include_alpha,
         include_object_id=include_object_id,
         include_material_id=include_material_id,
+        include_all_cameras=include_all_cameras,
         environment_pairs=environment_pairs,
     )
     try:

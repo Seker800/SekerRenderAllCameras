@@ -9,13 +9,13 @@
 
 ## Blender-facing 边界
 
-- `BlenderSceneReader` 读取并冻结 Scene、帧、Camera、每机 Light Collection/World 与渲染参数。
+- `BlenderSceneReader` 读取并冻结 Scene、帧、Camera 选择范围（全部或 Camera Environments 子集）、每机 Light Collection/World 与渲染参数。
 - `BlenderRenderAdapter` 按冻结计划设置目标摄影机和环境，并执行渲染。
 - `BlenderAlphaAdapter` 从当前 Render Result 提取 Alpha，不拥有 Beauty 调度。
 - `BlenderObjectIdAdapter` 临时配置 ID 渲染并把所有修改登记到状态事务。
 - `MaterialIdScene` 在隔离的临时 Workbench Scene 中保留 evaluated Mesh 的逐面材质索引，以稳定材质颜色输出 PNG；不修改用户 Material 或材质槽。
 - `BlenderStateTransaction` 捕获、应用并恢复 Camera、World、已登记 Collection `hide_render` 与 LayerCollection `exclude` 等宿主状态。
-- `blender.environment.preview_environment` 是 Presentation 选中配对后预览 Camera/Light/World 的唯一宿主边界；Property update 只转发意图。
+- `blender.environment.preview_environment` 是 Presentation 选中配对后预览 Camera/World 的唯一宿主边界；预览不修改任何灯组集合，Property update 只转发意图。
 
 这些名称是架构契约；若实现采用 Protocol/ABC 或不同具体类名，应在 `Docs/reference/实现现状.md` 建立一一映射。
 

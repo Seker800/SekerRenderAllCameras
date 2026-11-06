@@ -71,6 +71,22 @@ def draw_controls(layout: bpy.types.UILayout, context: bpy.types.Context) -> Non
     row.enabled = session is None
     row.prop(settings, "include_object_id")
     row.prop(settings, "include_material_id")
+    row = layout.row(align=True)
+    row.enabled = session is None
+    row.prop(settings, "include_all_cameras")
+    if not settings.include_all_cameras:
+        has_paired_camera = any(
+            pair.camera is not None for pair in settings.environment_pairs
+        )
+        message = (
+            "Only cameras added under Camera Environments will render"
+            if has_paired_camera
+            else (
+                "Camera Environments is empty: all cameras will render "
+                "with the scene environment"
+            )
+        )
+        layout.label(text=message, icon="INFO")
     draw_environment_pairs(layout, settings, enabled=session is None)
     if session is None:
         layout.operator("render.render_all_cameras", icon="RENDER_STILL")

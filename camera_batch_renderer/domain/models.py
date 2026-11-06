@@ -67,6 +67,7 @@ class RenderPlan:
     cameras: tuple[CameraSpec, ...]
     channels: tuple[Channel, ...]
     settings: RenderSettings
+    all_cameras: bool = True
 
 
 @dataclass(frozen=True, slots=True)

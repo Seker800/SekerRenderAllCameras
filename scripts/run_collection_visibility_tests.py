@@ -59,52 +59,27 @@ def main():
             layer.exclude = layer.hide_viewport = True
     initial_objects = (light.hide_render, light.hide_viewport)
     initial_eye = light.hide_get(view_layer=scene.view_layers[0])
-
-    preview_environment(
-        scene,
-        scene.view_layers[0],
-        camera=None,
-        world=None,
-        light_collection=selected,
-        other_light_collections=(other,),
+    preview_camera = bpy.data.objects.new(
+        "Preview Camera", bpy.data.cameras.new("Preview Camera")
     )
-    assert not selected.hide_render and not selected.hide_viewport
-    assert other.hide_render and other.hide_viewport
-    assert child.hide_render and child.hide_viewport
-    assert unrelated.hide_render and unrelated.hide_viewport
+    scene.collection.objects.link(preview_camera)
+    preview_world = bpy.data.worlds.new("Preview World")
+    before_collections = [
+        (item, item.hide_render, item.hide_viewport)
+        for item in (selected, other, child, unrelated, parent)
+    ]
+    before_layers = [(layer, layer.exclude) for layer in layers]
+    preview_environment(scene, camera=preview_camera, world=preview_world)
+    assert scene.camera == preview_camera
+    assert scene.world == preview_world
+    for item, hide_render, hide_viewport in before_collections:
+        assert item.hide_render == hide_render, item.name
+        assert item.hide_viewport == hide_viewport, item.name
+    for layer, excluded in before_layers:
+        assert layer.exclude == excluded, layer.collection.name
+    assert other_light.hide_get(view_layer=scene.view_layers[0])
     assert (light.hide_render, light.hide_viewport) == initial_objects
     assert light.hide_get(view_layer=scene.view_layers[0]) == initial_eye
-    assert all(layer.exclude for layer in layers if layer.collection in (child, unrelated))
-    assert other_light.hide_get(view_layer=scene.view_layers[0])
-    preview_environment(
-        scene,
-        scene.view_layers[0],
-        camera=None,
-        world=None,
-        light_collection=other,
-        other_light_collections=(selected,),
-    )
-    assert other_light.hide_get(view_layer=scene.view_layers[0])
-    preview_environment(
-        scene,
-        scene.view_layers[0],
-        camera=None,
-        world=None,
-        light_collection=selected,
-        other_light_collections=(other,),
-    )
-    # A manually hidden ancestor must stay hidden, even when a preset is selected.
-    parent.hide_render = parent.hide_viewport = True
-    preview_environment(
-        scene,
-        scene.view_layers[0],
-        camera=None,
-        world=None,
-        light_collection=selected,
-        other_light_collections=(other,),
-    )
-    assert parent.hide_render and parent.hide_viewport
-    parent.hide_render = parent.hide_viewport = False
 
     before = [(item, item.hide_render) for item in (selected, other, child, unrelated)]
     before_layers = [(layer, layer.exclude) for layer in layers]

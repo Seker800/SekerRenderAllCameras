@@ -129,6 +129,7 @@ class RAC_OT_render_all(bpy.types.Operator):
                 include_alpha=settings.include_alpha,
                 include_object_id=settings.include_object_id,
                 include_material_id=settings.include_material_id,
+                include_all_cameras=settings.include_all_cameras,
                 diagnostics=diagnostics,
                 environment_pairs=tuple(
                     (item.camera, item.light_collection, item.world)
